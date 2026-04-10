@@ -46,62 +46,7 @@ export const FAQ_ITEMS = [
   }
 ];
 
-export const PRODUCTS = [
-  {
-    id: 1,
-    name: "Sneaker Urban White",
-    category: "Femenino",
-    promo: "promo-2600",
-    image: "https://picsum.photos/seed/shoe1/400/400",
-    colors: ["Blanco", "Beige", "Rosa"],
-    sizes: ["36", "37", "38", "39", "40"],
-  },
-  {
-    id: 2,
-    name: "Sport Runner Black",
-    category: "Masculino",
-    promo: "promo-2990",
-    image: "https://picsum.photos/seed/shoe2/400/400",
-    colors: ["Negro", "Gris Oscuro", "Blanco"],
-    sizes: ["40", "41", "42", "43", "44", "45"],
-  },
-  {
-    id: 3,
-    name: "Kids Play Pink",
-    category: "Infantil",
-    promo: "promo-2600",
-    image: "https://picsum.photos/seed/shoe3/400/400",
-    colors: ["Rosa", "Blanco", "Beige"],
-    sizes: ["28", "29", "30", "31", "32", "33", "34", "35"],
-  },
-  {
-    id: 4,
-    name: "Classic Leather Brown",
-    category: "Masculino",
-    promo: "promo-2990",
-    image: "https://picsum.photos/seed/shoe4/400/400",
-    colors: ["Beige Oscuro", "Negro", "Blanco"],
-    sizes: ["40", "41", "42", "43", "44", "45"],
-  },
-  {
-    id: 5,
-    name: "Vibrant Sky Blue",
-    category: "Femenino",
-    promo: "promo-2600",
-    image: "https://picsum.photos/seed/shoe5/400/400",
-    colors: ["Rosa Pastel", "Blanco", "Beige"],
-    sizes: ["36", "37", "38", "39", "40"],
-  },
-  {
-    id: 6,
-    name: "Junior Speed",
-    category: "Infantil",
-    promo: "promo-2990",
-    image: "https://picsum.photos/seed/shoe6/400/400",
-    colors: ["Negro", "Blanco", "Rosa"],
-    sizes: ["28", "29", "30", "31", "32", "33", "34", "35"],
-  }
-];
+export const PRODUCTS = [];
 
 export const URUGUAY_DEPARTMENTS = [
   "Artigas", "Canelones", "Cerro Largo", "Colonia", "Durazno", "Flores", "Florida", 

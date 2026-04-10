@@ -20,10 +20,15 @@ import {
   Check,
   Globe,
   Sun,
-  Moon
+  Moon,
+  Trash2,
+  Plus,
+  Save,
+  LogOut
 } from 'lucide-react';
 import { cn } from './lib/utils';
-import { STORE_NAME, PROMOS, FAQ_ITEMS, PRODUCTS, URUGUAY_DEPARTMENTS } from './constants';
+import { STORE_NAME, PROMOS, FAQ_ITEMS, URUGUAY_DEPARTMENTS } from './constants';
+import { supabase } from './lib/supabase';
 
 // --- Components ---
 
@@ -48,9 +53,16 @@ const UruguayMap = ({ selected, onSelect }: { selected: string; onSelect: (dept:
   );
 };
 
-const SizeReference = ({ cm, onChange }: { cm: number; onChange: (val: number) => void }) => {
-  // Scale factor for the SVG insole - ensure it fits at 40cm
-  const scale = (cm / 40) * 0.85; 
+const formatSize = (eurSize: string) => {
+  const eur = parseInt(eurSize);
+  if (isNaN(eur)) return eurSize;
+  const br = eur - 2;
+  return `${br} BR (${eur} EUR)`;
+};
+
+const SizeReference = ({ cm, onChange, currentSize }: { cm: number; onChange: (val: number) => void; currentSize: string }) => {
+  // Scale factor for the SVG insole - ensure it fits at 35cm
+  const scale = (cm / 35) * 0.85; 
 
   return (
     <div className="space-y-6 p-6 bg-bg-primary rounded-xl border border-border-main shadow-inner">
@@ -67,8 +79,9 @@ const SizeReference = ({ cm, onChange }: { cm: number; onChange: (val: number) =
             <circle cx="180" cy="60" r="20" stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" className="text-brand-beige"/>
             <text x="125" y="65" textAnchor="middle" fill="currentColor" fontSize="12" fontWeight="bold" className="select-none text-brand-pink">BELLA</text>
           </svg>
-          <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-brand-pink text-white px-3 py-1 rounded-full text-[10px] font-bold shadow-lg z-10">
-            {cm.toFixed(1)} cm
+          <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-brand-pink text-white px-3 py-1 rounded-full shadow-lg z-10 flex flex-col items-center min-w-[80px]">
+            <span className="text-[10px] font-bold leading-tight">{cm.toFixed(1)} cm</span>
+            <span className="text-[8px] font-black opacity-90 leading-tight">{formatSize(currentSize)}</span>
           </div>
         </motion.div>
         
@@ -83,20 +96,23 @@ const SizeReference = ({ cm, onChange }: { cm: number; onChange: (val: number) =
       <div className="space-y-4">
         <div className="flex justify-between text-xs font-bold text-text-secondary uppercase tracking-widest">
           <span>20 cm</span>
-          <span className="text-brand-pink">{cm.toFixed(1)} cm</span>
-          <span>40 cm</span>
+          <div className="flex flex-col items-center">
+            <span className="text-brand-pink">{cm.toFixed(1)} cm</span>
+            <span className="text-[10px] text-text-secondary">{formatSize(currentSize)}</span>
+          </div>
+          <span>35 cm</span>
         </div>
         <input
           type="range"
           min="20"
-          max="40"
+          max="35"
           step="0.1"
           value={cm}
           onChange={(e) => onChange(parseFloat(e.target.value))}
           className="w-full h-2 bg-bg-secondary rounded-lg appearance-none cursor-pointer accent-brand-pink"
         />
         <p className="text-[10px] text-center text-text-secondary italic">
-          Desliza para ajustar los centímetros de la plantilla que se adapta a tu pie.
+          Desliza para ajustar los centímetros de la plantilla. El talle se seleccionará automáticamente.
         </p>
       </div>
     </div>
@@ -106,11 +122,16 @@ const SizeReference = ({ cm, onChange }: { cm: number; onChange: (val: number) =
 // --- Main App ---
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'catalog' | 'info' | 'order'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'info' | 'order' | 'admin'>('catalog');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [selectedPromo, setSelectedPromo] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
 
   // Modal State
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -131,16 +152,55 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setProducts(data || []);
+      } catch (error) {
+        console.error('Error fetching products:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('products_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setProducts(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'DELETE') {
+          setProducts(prev => prev.filter(p => p.id !== payload.old.id));
+        } else if (payload.eventType === 'UPDATE') {
+          setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []);
+
   const cmToSize = (cm: number) => {
-    if (cm <= 23) return '36';
-    if (cm <= 23.7) return '37';
-    if (cm <= 24.3) return '38';
+    if (cm <= 23.0) return '36';
+    if (cm <= 23.5) return '37';
+    if (cm < 24.5) return '38'; // 24.5 triggers 39 as requested
     if (cm <= 25.0) return '39';
-    if (cm <= 25.7) return '40';
-    if (cm <= 26.3) return '41';
-    if (cm <= 27.0) return '42';
-    if (cm <= 27.7) return '43';
-    if (cm <= 28.3) return '44';
+    if (cm <= 25.5) return '40';
+    if (cm <= 26.0) return '41';
+    if (cm <= 26.5) return '42';
+    if (cm <= 27.5) return '43';
+    if (cm <= 28.5) return '44';
     return '45';
   };
 
@@ -156,13 +216,13 @@ export default function App() {
   const categories = ['Todos', 'Femenino', 'Masculino', 'Infantil'];
 
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter(product => {
+    return products.filter(product => {
       const matchesCategory = selectedCategory === 'Todos' || product.category === selectedCategory;
       const matchesPromo = !selectedPromo || product.promo === selectedPromo;
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesPromo && matchesSearch;
     });
-  }, [selectedCategory, selectedPromo, searchQuery]);
+  }, [products, selectedCategory, selectedPromo, searchQuery]);
 
   const openProductModal = (product: any) => {
     setSelectedProduct(product);
@@ -173,6 +233,73 @@ export default function App() {
     setModalDetails('');
     setShowMap(false);
     setShowSizeRef(false);
+  };
+
+  const handleAdminLogin = () => {
+    if (adminPassword === 'admin123') {
+      setIsAdminAuthenticated(true);
+      setShowAdminLogin(false);
+      setActiveTab('admin');
+      setAdminPassword('');
+    } else {
+      alert('Contraseña incorrecta');
+    }
+  };
+
+  const handleDeleteProduct = async (id: number) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      // State will update via real-time subscription
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      alert('Error al eliminar el producto');
+    }
+  };
+
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    category: 'Femenino',
+    promo: 'promo-2600',
+    image: '',
+    colors: '',
+    sizes: '36,37,38,39,40'
+  });
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const productToInsert = {
+        ...newProduct,
+        colors: newProduct.colors.split(',').map(c => c.trim()),
+        sizes: newProduct.sizes.split(',').map(s => s.trim())
+      };
+
+      const { error } = await supabase
+        .from('products')
+        .insert([productToInsert]);
+
+      if (error) throw error;
+      
+      setNewProduct({
+        name: '',
+        category: 'Femenino',
+        promo: 'promo-2600',
+        image: '',
+        colors: '',
+        sizes: '36,37,38,39,40'
+      });
+      alert('Producto agregado con éxito');
+    } catch (error) {
+      console.error('Error adding product:', error);
+      alert('Error al agregar el producto');
+    }
   };
 
   const handleWhatsAppOrder = () => {
@@ -350,7 +477,7 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
                     <Maximize2 size={14} />
-                    <span>Seleccionar Talle (EU)</span>
+                    <span>Seleccionar Talle (BR / EUR)</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -359,13 +486,14 @@ export default function App() {
                       key={size}
                       onClick={() => setModalSize(size)}
                       className={cn(
-                        "w-14 h-14 rounded-lg text-sm font-bold transition-all border-2 flex items-center justify-center",
+                        "w-14 h-14 rounded-lg text-[10px] font-bold transition-all border-2 flex flex-col items-center justify-center leading-tight",
                         modalSize === size 
                           ? "bg-brand-pink text-white border-brand-pink shadow-xl shadow-brand-pink/10 scale-105" 
                           : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
                       )}
                     >
-                      {size}
+                      <span className="font-black text-sm">{parseInt(size) - 2}</span>
+                      <span className="opacity-70">({size})</span>
                     </button>
                   ))}
                 </div>
@@ -380,8 +508,7 @@ export default function App() {
                         : "bg-brand-pink text-white hover:bg-brand-pink/90 shadow-brand-pink/10"
                     )}
                   >
-                    <Ruler size={16} />
-                    {showSizeRef ? "Cerrar Guía de Talles" : "Elegir talle con referencia en Centimetros"}
+                    {showSizeRef ? "CERRAR GUÍA" : "ELEGIR TALLE CON CENTIMETROS"}
                   </button>
                 </div>
                 
@@ -393,7 +520,7 @@ export default function App() {
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <SizeReference cm={modalCm} onChange={handleCmChange} />
+                      <SizeReference cm={modalCm} onChange={handleCmChange} currentSize={modalSize} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -488,7 +615,18 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tighter text-brand-pink">{STORE_NAME}</h1>
+              <h1 
+                className="text-2xl font-bold tracking-tighter text-brand-pink cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => {
+                  if (isAdminAuthenticated) {
+                    setActiveTab('admin');
+                  } else {
+                    setShowAdminLogin(true);
+                  }
+                }}
+              >
+                {STORE_NAME}
+              </h1>
             </div>
             
             <div className="flex items-center gap-8">
@@ -652,51 +790,66 @@ export default function App() {
               </div>
 
               {/* Product Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
-                {filteredProducts.map((product) => {
-                  const promoLabel = PROMOS.find(p => p.id === product.promo)?.label;
-                  const isPremium = promoLabel === 'Premium';
-                  
-                  return (
-                    <motion.div
-                      layout
-                      key={product.id}
-                      className="group bg-bg-primary rounded-xl overflow-hidden border border-border-main shadow-sm hover:shadow-xl transition-all duration-300"
-                    >
-                      <div className="aspect-square overflow-hidden relative">
-                        <img 
-                          src={product.image} 
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          referrerPolicy="no-referrer"
-                        />
-                      </div>
-                      
-                      {/* Category Bar */}
-                      <div className={cn(
-                        "py-1 px-4 text-center text-[10px] font-black uppercase tracking-[0.2em] text-white",
-                        isPremium 
-                          ? "bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black shadow-inner" // Gold/Dorado
-                          : "bg-gradient-to-r from-[#71706E] via-[#E5E4E2] to-[#71706E] text-black shadow-inner" // Platinum/Silver/Platino
-                      )}>
-                        {promoLabel}
-                      </div>
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                  <div className="w-12 h-12 border-4 border-brand-pink border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-text-secondary font-bold uppercase tracking-widest text-xs">Cargando catálogo...</p>
+                </div>
+              ) : filteredProducts.length > 0 ? (
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
+                  {filteredProducts.map((product) => {
+                    const promoLabel = PROMOS.find(p => p.id === product.promo)?.label;
+                    const isPremium = promoLabel === 'Premium';
+                    
+                    return (
+                      <motion.div
+                        layout
+                        key={product.id}
+                        className="group bg-bg-primary rounded-xl overflow-hidden border border-border-main shadow-sm hover:shadow-xl transition-all duration-300"
+                      >
+                        <div className="aspect-square overflow-hidden relative">
+                          <img 
+                            src={product.image} 
+                            alt={product.name}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                        
+                        {/* Category Bar */}
+                        <div className={cn(
+                          "py-1 px-4 text-center text-[10px] font-black uppercase tracking-[0.2em] text-white",
+                          isPremium 
+                            ? "bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black shadow-inner" // Gold/Dorado
+                            : "bg-gradient-to-r from-[#71706E] via-[#E5E4E2] to-[#71706E] text-black shadow-inner" // Platinum/Silver/Platino
+                        )}>
+                          {promoLabel}
+                        </div>
 
-                      <div className="p-4 sm:p-6">
-                        <p className="text-[10px] font-bold text-brand-pink uppercase tracking-widest mb-1">{product.category}</p>
-                        <h3 className="text-lg font-bold text-text-primary mb-4 line-clamp-1">{product.name}</h3>
-                        <button 
-                          onClick={() => openProductModal(product)}
-                          className="w-full bg-text-primary text-bg-primary py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-brand-pink transition-colors active:scale-95"
-                        >
-                          <ShoppingBag size={16} />
-                          Ver Detalles
-                        </button>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
+                        <div className="p-4 sm:p-6">
+                          <p className="text-[10px] font-bold text-brand-pink uppercase tracking-widest mb-1">{product.category}</p>
+                          <h3 className="text-lg font-bold text-text-primary mb-4 line-clamp-1">{product.name}</h3>
+                          <button 
+                            onClick={() => openProductModal(product)}
+                            className="w-full bg-text-primary text-bg-primary py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-brand-pink transition-colors active:scale-95"
+                          >
+                            <ShoppingBag size={16} />
+                            Ver Detalles
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 bg-bg-secondary rounded-2xl border border-dashed border-border-main">
+                  <AlertCircle size={48} className="text-text-secondary opacity-20" />
+                  <div className="space-y-1">
+                    <p className="text-text-primary font-bold">No se encontraron productos</p>
+                    <p className="text-text-secondary text-sm">Intenta con otra búsqueda o categoría.</p>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -821,6 +974,139 @@ export default function App() {
               </div>
             </motion.div>
           )}
+
+          {activeTab === 'admin' && isAdminAuthenticated && (
+            <motion.div
+              key="admin"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-12"
+            >
+              <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter">Panel de Administración</h2>
+                <button 
+                  onClick={() => {
+                    setIsAdminAuthenticated(false);
+                    setActiveTab('catalog');
+                  }}
+                  className="flex items-center gap-2 text-text-secondary hover:text-brand-pink transition-colors font-bold uppercase text-xs tracking-widest"
+                >
+                  <LogOut size={16} />
+                  Cerrar Sesión
+                </button>
+              </div>
+
+              {/* Add Product Form */}
+              <div className="bg-bg-primary p-8 rounded-2xl border border-border-main shadow-xl space-y-6">
+                <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                  <Plus className="text-brand-pink" />
+                  Agregar Nuevo Producto
+                </h3>
+                <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Nombre del Producto</label>
+                    <input 
+                      required
+                      type="text" 
+                      value={newProduct.name}
+                      onChange={e => setNewProduct({...newProduct, name: e.target.value})}
+                      placeholder="Ej: Sneaker Urban White"
+                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">URL de la Imagen</label>
+                    <input 
+                      required
+                      type="url" 
+                      value={newProduct.image}
+                      onChange={e => setNewProduct({...newProduct, image: e.target.value})}
+                      placeholder="https://images.unsplash.com/..."
+                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Categoría</label>
+                    <select 
+                      value={newProduct.category}
+                      onChange={e => setNewProduct({...newProduct, category: e.target.value})}
+                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
+                    >
+                      <option value="Femenino">Femenino</option>
+                      <option value="Masculino">Masculino</option>
+                      <option value="Infantil">Infantil</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Promoción / Precio</label>
+                    <select 
+                      value={newProduct.promo}
+                      onChange={e => setNewProduct({...newProduct, promo: e.target.value})}
+                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
+                    >
+                      {PROMOS.map(p => (
+                        <option key={p.id} value={p.id}>{p.label} (${p.price})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Colores (separados por coma)</label>
+                    <input 
+                      required
+                      type="text" 
+                      value={newProduct.colors}
+                      onChange={e => setNewProduct({...newProduct, colors: e.target.value})}
+                      placeholder="Blanco, Negro, Beige"
+                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Talles (separados por coma)</label>
+                    <input 
+                      required
+                      type="text" 
+                      value={newProduct.sizes}
+                      onChange={e => setNewProduct({...newProduct, sizes: e.target.value})}
+                      placeholder="36, 37, 38, 39, 40"
+                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <button 
+                      type="submit"
+                      className="w-full bg-brand-pink text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-brand-pink/90 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Save size={20} />
+                      Guardar Producto
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Manage Existing Products */}
+              <div className="space-y-6">
+                <h3 className="text-xl font-bold text-text-primary">Gestionar Catálogo Actual</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  {products.map(product => (
+                    <div key={product.id} className="bg-bg-primary p-4 rounded-xl border border-border-main flex items-center gap-4 shadow-sm">
+                      <img src={product.image} alt="" className="w-16 h-16 object-cover rounded-lg" referrerPolicy="no-referrer" />
+                      <div className="flex-grow">
+                        <h4 className="font-bold text-text-primary">{product.name}</h4>
+                        <p className="text-xs text-text-secondary uppercase tracking-widest font-black">{product.category} • {PROMOS.find(p => p.id === product.promo)?.label}</p>
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteProduct(product.id)}
+                        className="p-3 text-text-secondary hover:text-red-500 hover:bg-red-50 transition-all rounded-lg"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
@@ -834,6 +1120,55 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Admin Login Modal */}
+      <AnimatePresence>
+        {showAdminLogin && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAdminLogin(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-bg-primary w-full max-w-md p-8 rounded-3xl border border-border-main shadow-2xl space-y-6"
+            >
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-black text-text-primary uppercase tracking-tighter">Acceso Administrativo</h2>
+                <p className="text-text-secondary text-sm">Introduce la contraseña para gestionar el catálogo.</p>
+              </div>
+              <div className="space-y-4">
+                <input 
+                  type="password" 
+                  placeholder="Contraseña"
+                  value={adminPassword}
+                  onChange={e => setAdminPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAdminLogin()}
+                  className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all text-center text-xl tracking-widest"
+                  autoFocus
+                />
+                <button 
+                  onClick={handleAdminLogin}
+                  className="w-full bg-brand-pink text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-brand-pink/90 transition-all"
+                >
+                  Entrar
+                </button>
+                <button 
+                  onClick={() => setShowAdminLogin(false)}
+                  className="w-full text-text-secondary text-xs font-bold uppercase tracking-widest hover:text-text-primary transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Floating WhatsApp for Mobile Removed */}
 
