@@ -285,7 +285,7 @@ export default function App() {
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProduct.image) {
-      alert('Por favor, selecciona una imagen para el producto.');
+      setNotification({ message: 'Por favor, selecciona una imagen para el producto', type: 'error' });
       return;
     }
 
@@ -352,7 +352,7 @@ export default function App() {
 
   const handleWhatsAppOrder = () => {
     if (!modalDept) {
-      alert("Por favor, selecciona un departamento de destino.");
+      setNotification({ message: 'Por favor, selecciona un departamento de destino', type: 'error' });
       setShowMap(true);
       return;
     }
