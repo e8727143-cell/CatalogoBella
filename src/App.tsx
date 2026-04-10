@@ -133,6 +133,8 @@ export default function App() {
   const [adminPassword, setAdminPassword] = useState('');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
   // Modal State
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -152,6 +154,13 @@ export default function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -242,14 +251,13 @@ export default function App() {
       setShowAdminLogin(false);
       setActiveTab('admin');
       setAdminPassword('');
+      setNotification({ message: 'Bienvenido, Administrador', type: 'success' });
     } else {
-      alert('Contraseña incorrecta');
+      setNotification({ message: 'Contraseña incorrecta', type: 'error' });
     }
   };
 
   const handleDeleteProduct = async (id: number) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
-    
     try {
       const { error } = await supabase
         .from('products')
@@ -257,10 +265,11 @@ export default function App() {
         .eq('id', id);
       
       if (error) throw error;
-      // State will update via real-time subscription
+      setConfirmDelete(null);
+      setNotification({ message: 'Producto eliminado correctamente', type: 'success' });
     } catch (error) {
       console.error('Error deleting product:', error);
-      alert('Error al eliminar el producto');
+      setNotification({ message: 'Error al eliminar el producto', type: 'error' });
     }
   };
 
@@ -302,10 +311,10 @@ export default function App() {
         colors: '',
         sizes: '36,37,38,39,40'
       });
-      alert('Producto agregado con éxito');
+      setNotification({ message: 'Producto agregado con éxito', type: 'success' });
     } catch (error) {
       console.error('Error adding product:', error);
-      alert('Error al agregar el producto');
+      setNotification({ message: 'Error al agregar el producto', type: 'error' });
     } finally {
       setUploading(false);
     }
@@ -332,9 +341,10 @@ export default function App() {
         .getPublicUrl(filePath);
 
       setNewProduct({ ...newProduct, image: publicUrl });
+      setNotification({ message: 'Imagen subida correctamente', type: 'success' });
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Error al subir la imagen. Asegúrate de haber creado el bucket "product-images" en Supabase Storage y que sea público.');
+      setNotification({ message: 'Error al subir la imagen. Verifica el bucket "product-images"', type: 'error' });
     } finally {
       setUploading(false);
     }
@@ -1143,7 +1153,7 @@ export default function App() {
                         <p className="text-xs text-text-secondary uppercase tracking-widest font-black">{product.category} • {PROMOS.find(p => p.id === product.promo)?.label}</p>
                       </div>
                       <button 
-                        onClick={() => handleDeleteProduct(product.id)}
+                        onClick={() => setConfirmDelete(product.id)}
                         className="p-3 text-text-secondary hover:text-red-500 hover:bg-red-50 transition-all rounded-lg"
                       >
                         <Trash2 size={20} />
@@ -1156,6 +1166,67 @@ export default function App() {
           )}
         </AnimatePresence>
       </main>
+
+      {/* Custom Notification */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className={cn(
+              "fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 rounded-full shadow-2xl font-bold text-sm uppercase tracking-widest flex items-center gap-3",
+              notification.type === 'success' ? "bg-green-500 text-white" : "bg-red-500 text-white"
+            )}
+          >
+            {notification.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+            {notification.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Delete Confirmation Modal */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmDelete(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-bg-primary w-full max-w-sm p-8 rounded-3xl border border-border-main shadow-2xl text-center space-y-6"
+            >
+              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto">
+                <Trash2 size={32} className="text-red-500" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-black text-text-primary uppercase tracking-tighter">¿Eliminar Producto?</h3>
+                <p className="text-text-secondary text-sm">Esta acción no se puede deshacer y el producto desaparecerá del catálogo.</p>
+              </div>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setConfirmDelete(null)}
+                  className="flex-1 py-4 rounded-xl font-bold text-text-secondary hover:bg-bg-secondary transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={() => handleDeleteProduct(confirmDelete)}
+                  className="flex-1 py-4 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 transition-colors"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Product Modal Removed - Replaced by Full Screen View */}
 
