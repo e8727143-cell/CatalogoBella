@@ -132,6 +132,7 @@ export default function App() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Modal State
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -274,7 +275,13 @@ export default function App() {
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newProduct.image) {
+      alert('Por favor, selecciona una imagen para el producto.');
+      return;
+    }
+
     try {
+      setUploading(true);
       const productToInsert = {
         ...newProduct,
         colors: newProduct.colors.split(',').map(c => c.trim()),
@@ -299,6 +306,37 @@ export default function App() {
     } catch (error) {
       console.error('Error adding product:', error);
       alert('Error al agregar el producto');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      setNewProduct({ ...newProduct, image: publicUrl });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Error al subir la imagen. Asegúrate de haber creado el bucket "product-images" en Supabase Storage y que sea público.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -1016,15 +1054,19 @@ export default function App() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">URL de la Imagen</label>
-                    <input 
-                      required
-                      type="url" 
-                      value={newProduct.image}
-                      onChange={e => setNewProduct({...newProduct, image: e.target.value})}
-                      placeholder="https://images.unsplash.com/..."
-                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
-                    />
+                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Imagen del Producto</label>
+                    <div className="flex flex-col gap-4">
+                      {newProduct.image && (
+                        <img src={newProduct.image} alt="Preview" className="w-32 h-32 object-cover rounded-xl border border-border-main" />
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="w-full text-sm text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:tracking-widest file:bg-bg-secondary file:text-text-primary hover:file:bg-bg-accent transition-all cursor-pointer"
+                      />
+                      {uploading && <p className="text-[10px] font-bold text-brand-pink animate-pulse">SUBIENDO IMAGEN...</p>}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Categoría</label>
@@ -1075,10 +1117,15 @@ export default function App() {
                   <div className="md:col-span-2">
                     <button 
                       type="submit"
-                      className="w-full bg-brand-pink text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-brand-pink/90 transition-all flex items-center justify-center gap-2"
+                      disabled={uploading}
+                      className="w-full bg-brand-pink text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-brand-pink/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Save size={20} />
-                      Guardar Producto
+                      {uploading ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <Save size={20} />
+                      )}
+                      {uploading ? 'Procesando...' : 'Guardar Producto'}
                     </button>
                   </div>
                 </form>
