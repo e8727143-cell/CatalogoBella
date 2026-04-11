@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, Component, ErrorInfo, ReactNode } from 'react';
+import { useState, useMemo, useEffect, Component, ErrorInfo, ReactNode, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShoppingBag, 
@@ -209,6 +209,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   const [promoFirstPair, setPromoFirstPair] = useState<any | null>(null);
+  const catalogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -1182,8 +1183,8 @@ ${shippingData}
 
         {/* Hero / Promos */}
         <section className="mb-12">
-          <div className="text-center mb-6">
-            <p className="text-lg font-black text-text-primary uppercase tracking-tighter">
+          <div className="text-center mb-6 overflow-x-auto no-scrollbar">
+            <p className="text-sm sm:text-lg font-black text-brand-pink uppercase tracking-tighter whitespace-nowrap">
               Clica en la imagen de la promo y elegí tus pares
             </p>
           </div>
@@ -1200,6 +1201,9 @@ ${shippingData}
                     setSelectedPromo(selectedPromo === promo.id ? null : promo.id);
                     setPromoFirstPair(null); // Reset promo selection when switching promos
                     setActiveTab('catalog');
+                    setTimeout(() => {
+                      catalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
                   }}
                   className={cn(
                     "relative overflow-hidden rounded-2xl cursor-pointer transition-all shadow-2xl",
@@ -1230,6 +1234,7 @@ ${shippingData}
         <AnimatePresence mode="wait">
           {activeTab === 'catalog' && (
             <motion.div
+              ref={catalogRef}
               key="catalog"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
