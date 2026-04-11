@@ -26,7 +26,8 @@ import {
   Save,
   LogOut,
   Pencil,
-  User
+  User,
+  ArrowRight
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { 
@@ -207,6 +208,8 @@ export default function App() {
   const [showSizeRef, setShowSizeRef] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
+  const [promoFirstPair, setPromoFirstPair] = useState<any | null>(null);
+
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -368,7 +371,6 @@ export default function App() {
     promo: 'promo-2600',
     image: '', // This will store JSON string of images array
     images: [] as {url: string, color: string}[],
-    colors: '',
     sizes: '36,37,38,39,40'
   });
 
@@ -381,12 +383,26 @@ export default function App() {
 
     try {
       setUploading(true);
+
+      // Extract unique colors from images
+      const extractedColors = Array.from(new Set(
+        newProduct.images
+          .map(img => img.color.trim())
+          .filter(color => color !== '')
+      ));
+
+      if (extractedColors.length === 0) {
+        setNotification({ message: 'Por favor, asigna un color a cada imagen', type: 'error' });
+        setUploading(false);
+        return;
+      }
+
       const productData = {
         name: newProduct.name,
         category: newProduct.category,
         promo: newProduct.promo,
         image: JSON.stringify(newProduct.images),
-        colors: typeof newProduct.colors === 'string' ? newProduct.colors.split(',').map(c => c.trim()) : newProduct.colors,
+        colors: extractedColors,
         sizes: typeof newProduct.sizes === 'string' ? newProduct.sizes.split(',').map(s => s.trim()) : newProduct.sizes
       };
 
@@ -430,7 +446,6 @@ export default function App() {
       promo: product.promo,
       image: product.image,
       images: parsedImages,
-      colors: product.colors.join(', '),
       sizes: product.sizes.join(', ')
     });
     // Scroll to form
@@ -445,7 +460,6 @@ export default function App() {
       promo: 'promo-2600',
       image: '',
       images: [],
-      colors: '',
       sizes: '36,37,38,39,40'
     });
   };
@@ -557,6 +571,22 @@ export default function App() {
     return product.image;
   };
 
+  const handleNextPair = () => {
+    if (!modalColor || !modalSize) {
+      setNotification({ message: 'Por favor, elige color y talle', type: 'error' });
+      return;
+    }
+    setPromoFirstPair({
+      product: selectedProduct,
+      color: modalColor,
+      size: modalSize,
+      cm: modalCm
+    });
+    setSelectedProduct(null);
+    setNotification({ message: '¡Primer par guardado! Ahora elige el segundo.', type: 'success' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleWhatsAppOrder = () => {
     if (!modalDept) {
       setNotification({ message: 'Por favor, selecciona un departamento de destino', type: 'error' });
@@ -564,7 +594,9 @@ export default function App() {
       return;
     }
 
-    if (!modalAgency) {
+    const isRivera = modalDept.toLowerCase() === 'rivera';
+
+    if (!isRivera && !modalAgency) {
       setNotification({ message: 'Por favor, selecciona una agencia de envío', type: 'error' });
       return;
     }
@@ -579,8 +611,6 @@ export default function App() {
       return;
     }
 
-    const isRivera = modalDept.toLowerCase() === 'rivera';
-    
     let shippingData = `👤 *Nombre y Apellido:* ${modalFullName}\n`;
     if (isRivera) {
       shippingData += `🏘️ *Barrio:* ${modalNeighborhood}\n🏠 *Dirección:* ${modalAddress}`;
@@ -588,17 +618,37 @@ export default function App() {
       shippingData += `🆔 *Cédula:* ${modalID}\n📞 *Teléfono:* ${modalPhone}\n🏢 *Lugar de retiro:* ${modalPickupLocation}`;
     }
 
-    const message = `¡Hola BELLA! Quiero realizar un pedido:
-    
+    let productDetails = '';
+    if (promoFirstPair) {
+      productDetails = `
+🔥 *PROMO 2 PARES:*
+1️⃣ *Par 1:* ${promoFirstPair.product.name}
+🎨 *Color:* ${promoFirstPair.color}
+📏 *Talle:* ${promoFirstPair.size} (${parseInt(promoFirstPair.size) - 2} BR)
+📏 *Plantilla:* ${promoFirstPair.cm.toFixed(1)} cm
+🖼️ *Foto 1:* ${getProductImage(promoFirstPair.product, promoFirstPair.color)}
+
+2️⃣ *Par 2:* ${selectedProduct.name}
+🎨 *Color:* ${modalColor}
+📏 *Talle:* ${modalSize} (${parseInt(modalSize) - 2} BR)
+📏 *Plantilla:* ${modalCm.toFixed(1)} cm
+🖼️ *Foto 2:* ${getProductImage(selectedProduct, modalColor)}
+`;
+    } else {
+      productDetails = `
 🖼️ *Foto del producto:* ${getProductImage(selectedProduct, modalColor)}
 
 📌 *Producto:* ${selectedProduct.name}
 🎨 *Color:* ${modalColor}
 📏 *Talle:* ${modalSize} (${parseInt(modalSize) - 2} BR)
 📏 *Plantilla:* ${modalCm.toFixed(1)} cm
-📍 *Destino:* ${modalDept}
-🚚 *Agencia:* ${modalAgency}
+`;
+    }
 
+    const message = `¡Hola BELLA! Quiero realizar un pedido:
+${productDetails}
+📍 *Destino:* ${modalDept}
+${isRivera ? '' : `🚚 *Agencia:* ${modalAgency}\n`}
 💳 *Método de Pago:* ${modalPayment}
 
 📦 *Datos de Envío:*
@@ -607,6 +657,7 @@ ${shippingData}
 ¿Cómo procedo con el pago?`;
 
     window.open(`https://wa.me/59895330959?text=${encodeURIComponent(message)}`, '_blank');
+    setPromoFirstPair(null);
   };
 
   const handleWhatsAppGeneral = () => {
@@ -812,195 +863,235 @@ ${shippingData}
               </div>
 
               {/* Destination Selection */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
-                    <MapPin size={14} />
-                    <span>Destino del Envío (Uruguay)</span>
-                  </div>
-                  <button 
-                    onClick={() => setShowMap(!showMap)}
-                    className="bg-bg-secondary text-text-secondary px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-pink hover:text-white transition-all border border-border-main"
-                  >
-                    {showMap ? "Cerrar Mapa" : "Elegir Departamento"}
-                  </button>
-                </div>
-                
-                {modalDept && !showMap && (
-                  <div className="p-5 bg-bg-secondary rounded-[1rem] border-2 border-brand-pink/20 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-brand-pink rounded-full flex items-center justify-center text-white">
-                        <MapPin size={16} />
-                      </div>
-                      <span className="font-black text-brand-pink text-lg">{modalDept}</span>
+              {(!selectedPromo || promoFirstPair) && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
+                      <MapPin size={14} />
+                      <span>Destino del Envío (Uruguay)</span>
                     </div>
-                    <button onClick={() => setShowMap(true)} className="text-xs font-bold text-text-secondary underline uppercase tracking-widest">Cambiar</button>
+                    <button 
+                      onClick={() => setShowMap(!showMap)}
+                      className="bg-bg-secondary text-text-secondary px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-pink hover:text-white transition-all border border-border-main"
+                    >
+                      {showMap ? "Cerrar Mapa" : "Elegir Departamento"}
+                    </button>
                   </div>
-                )}
-
-                <AnimatePresence>
-                  {showMap && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <UruguayMap 
-                        selected={modalDept} 
-                        onSelect={(dept) => {
-                          setModalDept(dept);
-                          setShowMap(false);
-                        }} 
-                      />
-                    </motion.div>
+                  
+                  {modalDept && !showMap && (
+                    <div className="p-5 bg-bg-secondary rounded-[1rem] border-2 border-brand-pink/20 flex items-center justify-between shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-brand-pink rounded-full flex items-center justify-center text-white">
+                          <MapPin size={16} />
+                        </div>
+                        <span className="font-black text-brand-pink text-lg">{modalDept}</span>
+                      </div>
+                      <button onClick={() => setShowMap(true)} className="text-xs font-bold text-text-secondary underline uppercase tracking-widest">Cambiar</button>
+                    </div>
                   )}
-                </AnimatePresence>
-              </div>
 
-              {/* Shipping Agency Selection */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
-                  <Truck size={14} />
-                  <span>Agencia de Envío</span>
+                  <AnimatePresence>
+                    {showMap && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <UruguayMap 
+                          selected={modalDept} 
+                          onSelect={(dept) => {
+                            setModalDept(dept);
+                            setShowMap(false);
+                          }} 
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {SHIPPING_AGENCIES.map((agency) => (
-                    <button
-                      key={agency}
-                      onClick={() => setModalAgency(agency)}
-                      className={cn(
-                        "py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-2",
-                        modalAgency === agency 
-                          ? "bg-brand-pink text-white border-brand-pink shadow-lg shadow-brand-pink/10 scale-105" 
-                          : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
+              )}
+
+              {/* Order Details Container */}
+              {(!selectedPromo || promoFirstPair) && (
+                <div className="p-6 bg-bg-secondary rounded-2xl border border-border-main space-y-8 shadow-sm">
+                  {/* Shipping Agency Selection */}
+                  {modalDept.toLowerCase() !== 'rivera' && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
+                        <Truck size={14} />
+                        <span>Agencia de Envío</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {SHIPPING_AGENCIES.map((agency) => (
+                          <button
+                            key={agency}
+                            onClick={() => setModalAgency(agency)}
+                            className={cn(
+                              "py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-2",
+                              modalAgency === agency 
+                                ? "bg-brand-pink text-white border-brand-pink shadow-lg shadow-brand-pink/10 scale-105" 
+                                : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
+                            )}
+                          >
+                            {agency}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payment Method Selection */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
+                      <CreditCard size={14} />
+                      <span>¿Cómo le gustaría realizar el pago?</span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                      {(modalDept.toLowerCase() === 'rivera' 
+                        ? ['Transferencia', 'Mercado Pago en hasta 12 cuotas con recargo', 'Efectivo']
+                        : [
+                            'Transferencia', 
+                            'Depósito Abitab/red pagos', 
+                            'Mercado Pago en hasta 12 cuotas con recargo', 
+                            'Efectivo únicamente en la ciudad de Rivera'
+                          ]
+                      ).map((method) => (
+                        <button
+                          key={method}
+                          onClick={() => setModalPayment(method)}
+                          className={cn(
+                            "p-4 rounded-xl text-xs font-bold text-left transition-all border-2",
+                            modalPayment === method 
+                              ? "bg-brand-pink text-white border-brand-pink shadow-lg" 
+                              : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
+                          )}
+                        >
+                          {method}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Shipping Data */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
+                      <User size={14} />
+                      <span>Datos de envío</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Nombre y apellido</label>
+                        <input 
+                          type="text" 
+                          value={modalFullName}
+                          onChange={e => setModalFullName(e.target.value)}
+                          placeholder="Tu nombre completo"
+                          className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+                        />
+                      </div>
+
+                      {modalDept.toLowerCase() === 'rivera' ? (
+                        <>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Barrio</label>
+                            <input 
+                              type="text" 
+                              value={modalNeighborhood}
+                              onChange={e => setModalNeighborhood(e.target.value)}
+                              placeholder="Tu barrio"
+                              className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Dirección</label>
+                            <input 
+                              type="text" 
+                              value={modalAddress}
+                              onChange={e => setModalAddress(e.target.value)}
+                              placeholder="Calle y número de puerta"
+                              className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Cédula</label>
+                            <input 
+                              type="text" 
+                              value={modalID}
+                              onChange={e => setModalID(e.target.value)}
+                              placeholder="Tu número de CI"
+                              className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Teléfono</label>
+                            <input 
+                              type="tel" 
+                              value={modalPhone}
+                              onChange={e => setModalPhone(e.target.value)}
+                              placeholder="Tu número de contacto"
+                              className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Lugar de retiro</label>
+                            <input 
+                              type="text" 
+                              value={modalPickupLocation}
+                              onChange={e => setModalPickupLocation(e.target.value)}
+                              placeholder="Agencia o punto de retiro"
+                              className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+                            />
+                          </div>
+                        </>
                       )}
-                    >
-                      {agency}
-                    </button>
-                  ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Payment Method Selection */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
-                  <CreditCard size={14} />
-                  <span>¿Cómo le gustaría realizar el pago?</span>
-                </div>
-                <div className="grid grid-cols-1 gap-3">
-                  {(modalDept.toLowerCase() === 'rivera' 
-                    ? ['Transferencia', 'Mercado Pago en hasta 12 cuotas con recargo', 'Efectivo']
-                    : [
-                        'Transferencia', 
-                        'Depósito Abitab/red pagos', 
-                        'Mercado Pago en hasta 12 cuotas con recargo', 
-                        'Efectivo únicamente en la ciudad de Rivera'
-                      ]
-                  ).map((method) => (
-                    <button
-                      key={method}
-                      onClick={() => setModalPayment(method)}
-                      className={cn(
-                        "p-4 rounded-xl text-xs font-bold text-left transition-all border-2",
-                        modalPayment === method 
-                          ? "bg-brand-pink text-white border-brand-pink shadow-lg" 
-                          : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
-                      )}
-                    >
-                      {method}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Shipping Data */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
-                  <User size={14} />
-                  <span>Datos de envío</span>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-4 p-6 bg-bg-secondary rounded-2xl border border-border-main">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Nombre y apellido</label>
-                    <input 
-                      type="text" 
-                      value={modalFullName}
-                      onChange={e => setModalFullName(e.target.value)}
-                      placeholder="Tu nombre completo"
-                      className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+              {/* Promo Summary if applicable */}
+              {promoFirstPair && (
+                <div className="p-4 bg-brand-pink/10 rounded-2xl border-2 border-brand-pink border-dashed space-y-3">
+                  <p className="text-[10px] font-black text-brand-pink uppercase tracking-widest flex items-center gap-2">
+                    <ShoppingBag size={14} />
+                    <span>Primer par seleccionado</span>
+                  </p>
+                  <div className="flex gap-4 items-center">
+                    <img 
+                      src={getProductImage(promoFirstPair.product, promoFirstPair.color)} 
+                      alt="" 
+                      className="w-16 h-16 object-cover rounded-lg border border-brand-pink/20"
                     />
+                    <div>
+                      <p className="font-bold text-text-primary text-sm">{promoFirstPair.product.name}</p>
+                      <p className="text-xs text-text-secondary">{promoFirstPair.color} | Talle {parseInt(promoFirstPair.size) - 2}</p>
+                    </div>
                   </div>
-
-                  {modalDept.toLowerCase() === 'rivera' ? (
-                    <>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Barrio</label>
-                        <input 
-                          type="text" 
-                          value={modalNeighborhood}
-                          onChange={e => setModalNeighborhood(e.target.value)}
-                          placeholder="Tu barrio"
-                          className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Dirección</label>
-                        <input 
-                          type="text" 
-                          value={modalAddress}
-                          onChange={e => setModalAddress(e.target.value)}
-                          placeholder="Calle y número de puerta"
-                          className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Cédula</label>
-                        <input 
-                          type="text" 
-                          value={modalID}
-                          onChange={e => setModalID(e.target.value)}
-                          placeholder="Tu número de CI"
-                          className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Teléfono</label>
-                        <input 
-                          type="tel" 
-                          value={modalPhone}
-                          onChange={e => setModalPhone(e.target.value)}
-                          placeholder="Tu número de contacto"
-                          className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Lugar de retiro</label>
-                        <input 
-                          type="text" 
-                          value={modalPickupLocation}
-                          onChange={e => setModalPickupLocation(e.target.value)}
-                          placeholder="Agencia o punto de retiro"
-                          className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
-                        />
-                      </div>
-                    </>
-                  )}
                 </div>
-              </div>
+              )}
 
               {/* Final Order Button */}
-              <button 
-                onClick={handleWhatsAppOrder}
-                className="w-full bg-text-primary text-bg-primary py-6 rounded-[1.25rem] text-xl font-black flex items-center justify-center gap-4 hover:bg-brand-pink hover:text-white transition-all shadow-2xl shadow-brand-pink/10 active:scale-95 group"
-              >
-                <ShoppingBag size={28} className="group-hover:rotate-12 transition-transform" />
-                ¡LO QUIERO!
-              </button>
+              {selectedPromo && !promoFirstPair ? (
+                <button 
+                  onClick={handleNextPair}
+                  className="w-full bg-brand-pink text-white py-6 rounded-[1.25rem] text-xl font-black flex items-center justify-center gap-4 hover:bg-text-primary transition-all shadow-2xl shadow-brand-pink/10 active:scale-95 group"
+                >
+                  <ArrowRight size={28} className="group-hover:translate-x-2 transition-transform" />
+                  SIGUIENTE PAR
+                </button>
+              ) : (
+                <button 
+                  onClick={handleWhatsAppOrder}
+                  className="w-full bg-text-primary text-bg-primary py-6 rounded-[1.25rem] text-xl font-black flex items-center justify-center gap-4 hover:bg-brand-pink hover:text-white transition-all shadow-2xl shadow-brand-pink/10 active:scale-95 group"
+                >
+                  <ShoppingBag size={28} className="group-hover:rotate-12 transition-transform" />
+                  ¡LO QUIERO!
+                </button>
+              )}
             </div>
           </div>
         </main>
@@ -1091,6 +1182,11 @@ ${shippingData}
 
         {/* Hero / Promos */}
         <section className="mb-12">
+          <div className="text-center mb-6">
+            <p className="text-lg font-black text-text-primary uppercase tracking-tighter">
+              Clica en la imagen de la promo y elegí tus pares
+            </p>
+          </div>
           <div className="grid grid-cols-1 gap-8">
             {PROMOS.map((promo) => {
               return (
@@ -1102,6 +1198,7 @@ ${shippingData}
                   whileTap={{ scale: 0.99 }}
                   onClick={() => {
                     setSelectedPromo(selectedPromo === promo.id ? null : promo.id);
+                    setPromoFirstPair(null); // Reset promo selection when switching promos
                     setActiveTab('catalog');
                   }}
                   className={cn(
@@ -1482,17 +1579,6 @@ ${shippingData}
                         <option key={p.id} value={p.id}>{p.label} (${p.price})</option>
                       ))}
                     </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Colores (separados por coma)</label>
-                    <input 
-                      required
-                      type="text" 
-                      value={newProduct.colors}
-                      onChange={e => setNewProduct({...newProduct, colors: e.target.value})}
-                      placeholder="Blanco, Negro, Beige"
-                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
-                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Talles (separados por coma)</label>
