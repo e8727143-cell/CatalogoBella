@@ -1535,9 +1535,10 @@ ${shippingData}
                               const newImages = newProduct.images.filter((_, i) => i !== idx);
                               setNewProduct({ ...newProduct, images: newImages });
                             }}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute -top-2 -right-2 bg-red-600 text-white p-2 rounded-full shadow-xl hover:bg-red-700 transition-all z-10"
+                            title="Eliminar imagen"
                           >
-                            <X size={12} />
+                            <X size={16} />
                           </button>
                         </div>
                       ))}
