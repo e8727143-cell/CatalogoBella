@@ -643,13 +643,13 @@ ${shippingData}
 
 ¿Cómo procedo con el pago?`;
 
-    window.open(`https://wa.me/59895330959?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/59895149966?text=${encodeURIComponent(message)}`, '_blank');
     setPromoFirstPair(null);
   };
 
   const handleWhatsAppGeneral = () => {
     const text = "Hola BELLA! Quisiera más información sobre el catálogo.";
-    window.open(`https://wa.me/59895330959?text=${encodeURIComponent(text)}`, '_blank');
+    window.open(`https://wa.me/59895149966?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   if (selectedProduct) {
