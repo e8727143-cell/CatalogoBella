@@ -1309,10 +1309,10 @@ ${shippingData}
 
                         <div className="p-4 sm:p-6">
                           <p className="text-[10px] font-bold text-brand-pink uppercase tracking-widest mb-1">{product.category}</p>
-                          <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-text-primary line-clamp-1">{product.name}</h3>
+                          <div className="mb-4">
+                            <h3 className="text-base sm:text-lg font-bold text-text-primary leading-tight mb-1">{product.name}</h3>
                             {product.price && (
-                              <span className="text-brand-pink font-black">${product.price}</span>
+                              <div className="text-brand-pink font-black text-xl">${product.price}</div>
                             )}
                           </div>
                           <button 
