@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShoppingBag, 
@@ -39,6 +39,49 @@ import {
 import { supabase } from './lib/supabase';
 
 // --- Components ---
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4 text-center">
+          <div className="max-w-md space-y-6">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle size={40} className="text-red-500" />
+            </div>
+            <h1 className="text-2xl font-black text-text-primary uppercase tracking-tighter">¡Ups! Algo salió mal</h1>
+            <p className="text-text-secondary text-sm">
+              La aplicación ha encontrado un error inesperado. Por favor, intenta recargar la página.
+            </p>
+            <pre className="text-[10px] bg-bg-secondary p-4 rounded-lg overflow-auto max-h-40 text-left border border-border-main">
+              {this.state.error?.message}
+            </pre>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full bg-brand-pink text-white py-4 rounded-xl font-bold uppercase tracking-widest shadow-lg"
+            >
+              Recargar Página
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const UruguayMap = ({ selected, onSelect }: { selected: string; onSelect: (dept: string) => void }) => {
   return (
@@ -370,27 +413,87 @@ export default function App() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!supabase) {
+      setNotification({ message: 'Error: Supabase no está configurado correctamente.', type: 'error' });
+      return;
+    }
+
     try {
       setUploading(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
+      
+      // Client-side compression to prevent mobile crashes
+      const compressedFile = await new Promise<File>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target?.result as string;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1200;
+            const MAX_HEIGHT = 1200;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+            
+            canvas.toBlob((blob) => {
+              if (blob) {
+                resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+              } else {
+                reject(new Error('Error al comprimir imagen'));
+              }
+            }, 'image/jpeg', 0.8);
+          };
+          img.onerror = () => reject(new Error('Error al cargar imagen'));
+        };
+        reader.onerror = () => reject(new Error('Error al leer archivo'));
+      });
+
+      const fileExt = 'jpg';
+      const fileName = `${Date.now()}-${Math.floor(Math.random() * 1000)}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('product-images')
-        .upload(filePath, file);
+        .upload(filePath, compressedFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data } = supabase.storage
         .from('product-images')
         .getPublicUrl(filePath);
 
-      setNewProduct({ ...newProduct, image: publicUrl });
+      if (!data || !data.publicUrl) {
+        throw new Error('No se pudo obtener la URL pública de la imagen');
+      }
+
+      setNewProduct(prev => ({ ...prev, image: data.publicUrl }));
       setNotification({ message: 'Imagen subida correctamente', type: 'success' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading image:', error);
-      setNotification({ message: 'Error al subir la imagen. Verifica el bucket "product-images"', type: 'error' });
+      setNotification({ 
+        message: `Error al subir: ${error.message || 'Verifica el bucket "product-images"'}`, 
+        type: 'error' 
+      });
     } finally {
       setUploading(false);
     }
@@ -432,7 +535,8 @@ export default function App() {
 
   if (selectedProduct) {
     return (
-      <div className="min-h-screen bg-bg-primary flex flex-col">
+      <ErrorBoundary>
+        <div className="min-h-screen bg-bg-primary flex flex-col">
         {/* Detail Header */}
         <header className="sticky top-0 z-50 bg-bg-primary/80 backdrop-blur-md border-b border-border-main">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -730,11 +834,13 @@ export default function App() {
           </div>
         </footer>
       </div>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <ErrorBoundary>
+      <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-bg-primary/80 backdrop-blur-md border-b border-border-main">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1391,5 +1497,6 @@ export default function App() {
         }
       `}</style>
     </div>
+    </ErrorBoundary>
   );
 }
