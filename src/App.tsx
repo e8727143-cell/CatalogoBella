@@ -112,8 +112,8 @@ const formatSize = (eurSize: string) => {
 };
 
 const SizeReference = ({ cm, onChange, currentSize }: { cm: number; onChange: (val: number) => void; currentSize: string }) => {
-  // Scale factor for the SVG insole - ensure it fits at 35cm
-  const scale = (cm / 35) * 0.85; 
+  // Scale factor for the SVG insole - ensure it fits at 29cm
+  const scale = (cm / 29) * 0.85; 
 
   return (
     <div className="space-y-6 p-6 bg-bg-primary rounded-xl border border-border-main shadow-inner">
@@ -146,17 +146,17 @@ const SizeReference = ({ cm, onChange, currentSize }: { cm: number; onChange: (v
 
       <div className="space-y-4">
         <div className="flex justify-between text-xs font-bold text-text-secondary uppercase tracking-widest">
-          <span>20 cm</span>
+          <span>12 cm</span>
           <div className="flex flex-col items-center">
             <span className="text-brand-pink">{cm.toFixed(1)} cm</span>
             <span className="text-[10px] text-text-secondary">{formatSize(currentSize)}</span>
           </div>
-          <span>35 cm</span>
+          <span>29 cm</span>
         </div>
         <input
           type="range"
-          min="20"
-          max="35"
+          min="12"
+          max="29"
           step="0.1"
           value={cm}
           onChange={(e) => onChange(parseFloat(e.target.value))}
@@ -196,6 +196,13 @@ export default function App() {
   const [modalAgency, setModalAgency] = useState('');
   const [modalCm, setModalCm] = useState(25);
   const [modalName, setModalName] = useState('');
+  const [modalPayment, setModalPayment] = useState('');
+  const [modalFullName, setModalFullName] = useState('');
+  const [modalID, setModalID] = useState('');
+  const [modalPhone, setModalPhone] = useState('');
+  const [modalPickupLocation, setModalPickupLocation] = useState('');
+  const [modalNeighborhood, setModalNeighborhood] = useState('');
+  const [modalAddress, setModalAddress] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [showSizeRef, setShowSizeRef] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -255,15 +262,34 @@ export default function App() {
   }, []);
 
   const cmToSize = (cm: number) => {
-    if (cm <= 23.0) return '36';
-    if (cm <= 23.5) return '37';
-    if (cm < 24.5) return '38'; // 24.5 triggers 39 as requested
-    if (cm <= 25.0) return '39';
-    if (cm <= 25.5) return '40';
-    if (cm <= 26.0) return '41';
-    if (cm <= 26.5) return '42';
-    if (cm <= 27.5) return '43';
-    if (cm <= 28.5) return '44';
+    // Kids range (approximate)
+    if (cm < 13.0) return '20';
+    if (cm < 13.5) return '21';
+    if (cm < 14.0) return '22';
+    if (cm < 14.5) return '23';
+    if (cm < 15.0) return '24';
+    if (cm < 15.5) return '25';
+    if (cm < 16.0) return '26';
+    if (cm < 16.5) return '27';
+    if (cm < 17.0) return '28';
+    if (cm < 17.5) return '29';
+    if (cm < 18.0) return '30';
+    if (cm < 18.5) return '31';
+    if (cm < 19.5) return '32';
+    if (cm < 20.5) return '33';
+    if (cm < 21.5) return '34';
+    if (cm < 22.5) return '35';
+    
+    // Adult range (user provided)
+    if (cm < 23.25) return '36';
+    if (cm < 24.0) return '37';
+    if (cm < 24.75) return '38';
+    if (cm < 25.25) return '39';
+    if (cm < 25.75) return '40';
+    if (cm < 26.25) return '41';
+    if (cm < 27.0) return '42';
+    if (cm < 28.0) return '43';
+    if (cm < 28.75) return '44';
     return '45';
   };
 
@@ -295,8 +321,17 @@ export default function App() {
     setModalAgency('');
     setModalCm(25);
     setModalName('');
+    setModalPayment('');
+    setModalFullName('');
+    setModalID('');
+    setModalPhone('');
+    setModalPickupLocation('');
+    setModalNeighborhood('');
+    setModalAddress('');
     setShowMap(false);
     setShowSizeRef(false);
+    // Scroll to top of product detail
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAdminLogin = () => {
@@ -331,22 +366,26 @@ export default function App() {
     name: '',
     category: 'Femenino',
     promo: 'promo-2600',
-    image: '',
+    image: '', // This will store JSON string of images array
+    images: [] as {url: string, color: string}[],
     colors: '',
     sizes: '36,37,38,39,40'
   });
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newProduct.image) {
-      setNotification({ message: 'Por favor, selecciona una imagen para el producto', type: 'error' });
+    if (newProduct.images.length === 0) {
+      setNotification({ message: 'Por favor, sube al menos una imagen para el producto', type: 'error' });
       return;
     }
 
     try {
       setUploading(true);
       const productData = {
-        ...newProduct,
+        name: newProduct.name,
+        category: newProduct.category,
+        promo: newProduct.promo,
+        image: JSON.stringify(newProduct.images),
         colors: typeof newProduct.colors === 'string' ? newProduct.colors.split(',').map(c => c.trim()) : newProduct.colors,
         sizes: typeof newProduct.sizes === 'string' ? newProduct.sizes.split(',').map(s => s.trim()) : newProduct.sizes
       };
@@ -366,15 +405,7 @@ export default function App() {
         setNotification({ message: 'Producto creado con éxito', type: 'success' });
       }
       
-      setNewProduct({
-        name: '',
-        category: 'Femenino',
-        promo: 'promo-2600',
-        image: '',
-        colors: '',
-        sizes: '36,37,38,39,40'
-      });
-      setEditingProduct(null);
+      cancelEdit();
     } catch (error) {
       console.error('Error saving product:', error);
       setNotification({ message: 'Error al guardar el producto', type: 'error' });
@@ -384,12 +415,21 @@ export default function App() {
   };
 
   const handleEditClick = (product: any) => {
+    let parsedImages = [];
+    try {
+      parsedImages = JSON.parse(product.image);
+      if (!Array.isArray(parsedImages)) parsedImages = [{url: product.image, color: product.colors[0]}];
+    } catch (e) {
+      parsedImages = [{url: product.image, color: product.colors[0]}];
+    }
+
     setEditingProduct(product);
     setNewProduct({
       name: product.name,
       category: product.category,
       promo: product.promo,
       image: product.image,
+      images: parsedImages,
       colors: product.colors.join(', '),
       sizes: product.sizes.join(', ')
     });
@@ -404,6 +444,7 @@ export default function App() {
       category: 'Femenino',
       promo: 'promo-2600',
       image: '',
+      images: [],
       colors: '',
       sizes: '36,37,38,39,40'
     });
@@ -486,8 +527,11 @@ export default function App() {
         throw new Error('No se pudo obtener la URL pública de la imagen');
       }
 
-      setNewProduct(prev => ({ ...prev, image: data.publicUrl }));
-      setNotification({ message: 'Imagen subida correctamente', type: 'success' });
+      setNewProduct(prev => ({
+        ...prev,
+        images: [...prev.images, { url: data.publicUrl, color: '' }]
+      }));
+      setNotification({ message: 'Imagen subida correctamente. Asigna un color abajo.', type: 'success' });
     } catch (error: any) {
       console.error('Error uploading image:', error);
       setNotification({ 
@@ -497,6 +541,20 @@ export default function App() {
     } finally {
       setUploading(false);
     }
+  };
+
+  const getProductImage = (product: any, color: string) => {
+    if (!product) return '';
+    try {
+      const images = JSON.parse(product.image);
+      if (Array.isArray(images)) {
+        const matched = images.find((img: any) => img.color === color);
+        return matched ? matched.url : images[0].url;
+      }
+    } catch (e) {
+      // Not a JSON string, return as is
+    }
+    return product.image;
   };
 
   const handleWhatsAppOrder = () => {
@@ -511,9 +569,28 @@ export default function App() {
       return;
     }
 
+    if (!modalPayment) {
+      setNotification({ message: 'Por favor, selecciona un método de pago', type: 'error' });
+      return;
+    }
+
+    if (!modalFullName) {
+      setNotification({ message: 'Por favor, ingresa tu nombre y apellido', type: 'error' });
+      return;
+    }
+
+    const isRivera = modalDept.toLowerCase() === 'rivera';
+    
+    let shippingData = `👤 *Nombre y Apellido:* ${modalFullName}\n`;
+    if (isRivera) {
+      shippingData += `🏘️ *Barrio:* ${modalNeighborhood}\n🏠 *Dirección:* ${modalAddress}`;
+    } else {
+      shippingData += `🆔 *Cédula:* ${modalID}\n📞 *Teléfono:* ${modalPhone}\n🏢 *Lugar de retiro:* ${modalPickupLocation}`;
+    }
+
     const message = `¡Hola BELLA! Quiero realizar un pedido:
     
-🖼️ *Foto del producto:* ${selectedProduct.image}
+🖼️ *Foto del producto:* ${getProductImage(selectedProduct, modalColor)}
 
 📌 *Producto:* ${selectedProduct.name}
 🎨 *Color:* ${modalColor}
@@ -521,7 +598,11 @@ export default function App() {
 📏 *Plantilla:* ${modalCm.toFixed(1)} cm
 📍 *Destino:* ${modalDept}
 🚚 *Agencia:* ${modalAgency}
-👤 *Nombre:* ${modalName || 'No especificado'}
+
+💳 *Método de Pago:* ${modalPayment}
+
+📦 *Datos de Envío:*
+${shippingData}
 
 ¿Cómo procedo con el pago?`;
 
@@ -568,18 +649,18 @@ export default function App() {
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Image Section */}
             <div className="lg:w-1/2 space-y-4">
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="aspect-square rounded-[1.5rem] overflow-hidden shadow-2xl border border-border-main"
-              >
-                <img 
-                  src={selectedProduct.image} 
-                  alt={selectedProduct.name}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              </motion.div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="aspect-square rounded-[1.5rem] overflow-hidden shadow-2xl border border-border-main"
+                >
+                  <img 
+                    src={getProductImage(selectedProduct, modalColor)} 
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </motion.div>
               <div className="flex gap-4">
                 <div className="flex-1 p-4 bg-bg-secondary rounded-lg text-center">
                   <p className="text-[10px] font-black text-brand-pink uppercase tracking-widest">Categoría</p>
@@ -598,10 +679,10 @@ export default function App() {
                 <h2 className="text-4xl font-black text-text-primary mb-2 leading-tight">{selectedProduct.name}</h2>
                 <div className="flex flex-wrap gap-2">
                   <div className="inline-block bg-brand-pink text-white px-4 py-1 rounded-full text-sm font-black uppercase tracking-widest shadow-lg shadow-brand-pink/10">
-                    {PROMOS.find(p => p.id === selectedProduct.promo)?.title}
+                    <span>{PROMOS.find(p => p.id === selectedProduct.promo)?.title}</span>
                   </div>
                   <div className="inline-block bg-text-primary text-bg-primary px-4 py-1 rounded-full text-sm font-black uppercase tracking-widest shadow-lg">
-                    Stock Disponible
+                    <span>Stock Disponible</span>
                   </div>
                 </div>
               </div>
@@ -801,19 +882,115 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Name Field */}
+              {/* Payment Method Selection */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
-                  <User size={14} />
-                  <span>Tu Nombre (Opcional)</span>
+                  <CreditCard size={14} />
+                  <span>¿Cómo le gustaría realizar el pago?</span>
                 </div>
-                <input
-                  type="text"
-                  placeholder="Escribe tu nombre aquí..."
-                  value={modalName}
-                  onChange={(e) => setModalName(e.target.value)}
-                  className="w-full p-6 rounded-[1rem] bg-bg-secondary border-2 border-border-main focus:outline-none focus:border-brand-pink text-sm transition-all text-text-primary"
-                />
+                <div className="grid grid-cols-1 gap-3">
+                  {(modalDept.toLowerCase() === 'rivera' 
+                    ? ['Transferencia', 'Mercado Pago en hasta 12 cuotas con recargo', 'Efectivo']
+                    : [
+                        'Transferencia', 
+                        'Depósito Abitab/red pagos', 
+                        'Mercado Pago en hasta 12 cuotas con recargo', 
+                        'Efectivo únicamente en la ciudad de Rivera'
+                      ]
+                  ).map((method) => (
+                    <button
+                      key={method}
+                      onClick={() => setModalPayment(method)}
+                      className={cn(
+                        "p-4 rounded-xl text-xs font-bold text-left transition-all border-2",
+                        modalPayment === method 
+                          ? "bg-brand-pink text-white border-brand-pink shadow-lg" 
+                          : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
+                      )}
+                    >
+                      {method}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Shipping Data */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
+                  <User size={14} />
+                  <span>Datos de envío</span>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-4 p-6 bg-bg-secondary rounded-2xl border border-border-main">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Nombre y apellido</label>
+                    <input 
+                      type="text" 
+                      value={modalFullName}
+                      onChange={e => setModalFullName(e.target.value)}
+                      placeholder="Tu nombre completo"
+                      className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+                    />
+                  </div>
+
+                  {modalDept.toLowerCase() === 'rivera' ? (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Barrio</label>
+                        <input 
+                          type="text" 
+                          value={modalNeighborhood}
+                          onChange={e => setModalNeighborhood(e.target.value)}
+                          placeholder="Tu barrio"
+                          className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Dirección</label>
+                        <input 
+                          type="text" 
+                          value={modalAddress}
+                          onChange={e => setModalAddress(e.target.value)}
+                          placeholder="Calle y número de puerta"
+                          className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Cédula</label>
+                        <input 
+                          type="text" 
+                          value={modalID}
+                          onChange={e => setModalID(e.target.value)}
+                          placeholder="Tu número de CI"
+                          className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Teléfono</label>
+                        <input 
+                          type="tel" 
+                          value={modalPhone}
+                          onChange={e => setModalPhone(e.target.value)}
+                          placeholder="Tu número de contacto"
+                          className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Lugar de retiro</label>
+                        <input 
+                          type="text" 
+                          value={modalPickupLocation}
+                          onChange={e => setModalPickupLocation(e.target.value)}
+                          placeholder="Agencia o punto de retiro"
+                          className="w-full p-4 rounded-xl bg-bg-primary border border-border-main focus:border-brand-pink outline-none transition-all"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Final Order Button */}
@@ -1011,7 +1188,14 @@ export default function App() {
                       >
                         <div className="aspect-square overflow-hidden relative">
                           <img 
-                            src={product.image} 
+                            src={(() => {
+                              try {
+                                const imgs = JSON.parse(product.image);
+                                return Array.isArray(imgs) ? imgs[0].url : product.image;
+                              } catch (e) {
+                                return product.image;
+                              }
+                            })()} 
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                             referrerPolicy="no-referrer"
@@ -1228,20 +1412,51 @@ export default function App() {
                       className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Imagen del Producto</label>
-                    <div className="flex flex-col gap-4">
-                      {newProduct.image && (
-                        <img src={newProduct.image} alt="Preview" className="w-32 h-32 object-cover rounded-xl border border-border-main" />
-                      )}
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="w-full text-sm text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:tracking-widest file:bg-bg-secondary file:text-text-primary hover:file:bg-bg-accent transition-all cursor-pointer"
-                      />
-                      {uploading && <p className="text-[10px] font-bold text-brand-pink animate-pulse">SUBIENDO IMAGEN...</p>}
+                  <div className="md:col-span-2 space-y-4">
+                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Imágenes del Producto (Sube una por cada color)</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {newProduct.images.map((img, idx) => (
+                        <div key={idx} className="relative group bg-bg-secondary rounded-xl border border-border-main p-2 space-y-2">
+                          <img src={img.url} alt="" className="w-full aspect-square object-cover rounded-lg" />
+                          <input 
+                            type="text"
+                            placeholder="Color"
+                            value={img.color}
+                            onChange={(e) => {
+                              const newImages = [...newProduct.images];
+                              newImages[idx].color = e.target.value;
+                              setNewProduct({ ...newProduct, images: newImages });
+                            }}
+                            className="w-full p-2 text-[10px] rounded bg-bg-primary border border-border-main outline-none focus:border-brand-pink"
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newImages = newProduct.images.filter((_, i) => i !== idx);
+                              setNewProduct({ ...newProduct, images: newImages });
+                            }}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                      <label className="aspect-square rounded-xl border-2 border-dashed border-border-main flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-brand-pink hover:bg-brand-pink/5 transition-all text-text-secondary hover:text-brand-pink">
+                        <Plus size={24} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Subir Foto</span>
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                      </label>
                     </div>
+                    {uploading && (
+                      <p key="uploading-status" className="text-[10px] font-bold text-brand-pink animate-pulse">
+                        <span>SUBIENDO IMAGEN...</span>
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Categoría</label>
@@ -1302,13 +1517,15 @@ export default function App() {
                       )}
                     >
                       {uploading ? (
-                        <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <div key="spinner" className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
                       ) : (
-                        editingProduct ? <Save size={24} /> : <Plus size={24} />
+                        editingProduct ? <Save key="save-icon" size={24} /> : <Plus key="plus-icon" size={24} />
                       )}
-                      {uploading 
-                        ? (editingProduct ? 'Actualizando Producto...' : 'Creando Producto...') 
-                        : (editingProduct ? 'Guardar Cambios' : 'Crear Producto')}
+                      <span key="button-text">
+                        {uploading 
+                          ? (editingProduct ? 'Actualizando Producto...' : 'Creando Producto...') 
+                          : (editingProduct ? 'Guardar Cambios' : 'Crear Producto')}
+                      </span>
                     </button>
                   </div>
                 </form>
@@ -1322,8 +1539,12 @@ export default function App() {
                     <div key={product.id} className="bg-bg-primary p-4 rounded-xl border border-border-main flex items-center gap-4 shadow-sm hover:border-brand-pink/30 transition-colors">
                       <img src={product.image} alt="" className="w-16 h-16 object-cover rounded-lg" referrerPolicy="no-referrer" />
                       <div className="flex-grow">
-                        <h4 className="font-bold text-text-primary text-sm sm:text-base">{product.name}</h4>
-                        <p className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-widest font-black">{product.category} • {PROMOS.find(p => p.id === product.promo)?.label}</p>
+                        <h4 className="font-bold text-text-primary text-sm sm:text-base">
+                          <span>{product.name}</span>
+                        </h4>
+                        <p className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-widest font-black">
+                          <span>{product.category} • {PROMOS.find(p => p.id === product.promo)?.label}</span>
+                        </p>
                       </div>
                       <div className="flex items-center gap-1 sm:gap-2">
                         <button 
@@ -1354,6 +1575,7 @@ export default function App() {
       <AnimatePresence>
         {notification && (
           <motion.div
+            key="notification-toast"
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
@@ -1363,7 +1585,7 @@ export default function App() {
             )}
           >
             {notification.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-            {notification.message}
+            <span>{notification.message}</span>
           </motion.div>
         )}
       </AnimatePresence>
