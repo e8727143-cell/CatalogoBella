@@ -24,10 +24,20 @@ import {
   Trash2,
   Plus,
   Save,
-  LogOut
+  LogOut,
+  Pencil,
+  Sparkles,
+  Camera
 } from 'lucide-react';
 import { cn } from './lib/utils';
-import { STORE_NAME, PROMOS, FAQ_ITEMS, URUGUAY_DEPARTMENTS } from './constants';
+import { 
+  STORE_NAME, 
+  PROMOS, 
+  FAQ_ITEMS, 
+  URUGUAY_DEPARTMENTS,
+  SHIPPING_AGENCIES 
+} from './constants';
+import { tryOnShoe } from './services/geminiService';
 import { supabase } from './lib/supabase';
 
 // --- Components ---
@@ -135,16 +145,24 @@ export default function App() {
   const [uploading, setUploading] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
 
   // Modal State
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [modalColor, setModalColor] = useState('');
   const [modalSize, setModalSize] = useState('');
   const [modalDept, setModalDept] = useState('');
+  const [modalAgency, setModalAgency] = useState('');
   const [modalCm, setModalCm] = useState(25);
   const [modalDetails, setModalDetails] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [showSizeRef, setShowSizeRef] = useState(false);
+  
+  // AI Try-On States
+  const [footImage, setFootImage] = useState<string | null>(null);
+  const [tryOnResult, setTryOnResult] = useState<string | null>(null);
+  const [isGeneratingTryOn, setIsGeneratingTryOn] = useState(false);
+  const [showTryOn, setShowTryOn] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
@@ -223,7 +241,7 @@ export default function App() {
     }
   };
 
-  const categories = ['Todos', 'Femenino', 'Masculino', 'Infantil'];
+  const categories = ['Todos', 'Femenino', 'Masculino', 'Infantil', 'Unisex'];
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
@@ -239,10 +257,15 @@ export default function App() {
     setModalColor(product.colors[0]);
     setModalSize(product.sizes[0]);
     setModalDept('');
+    setModalAgency('');
     setModalCm(25);
     setModalDetails('');
     setShowMap(false);
     setShowSizeRef(false);
+    setFootImage(null);
+    setTryOnResult(null);
+    setIsGeneratingTryOn(false);
+    setShowTryOn(false);
   };
 
   const handleAdminLogin = () => {
@@ -291,17 +314,26 @@ export default function App() {
 
     try {
       setUploading(true);
-      const productToInsert = {
+      const productData = {
         ...newProduct,
-        colors: newProduct.colors.split(',').map(c => c.trim()),
-        sizes: newProduct.sizes.split(',').map(s => s.trim())
+        colors: typeof newProduct.colors === 'string' ? newProduct.colors.split(',').map(c => c.trim()) : newProduct.colors,
+        sizes: typeof newProduct.sizes === 'string' ? newProduct.sizes.split(',').map(s => s.trim()) : newProduct.sizes
       };
 
-      const { error } = await supabase
-        .from('products')
-        .insert([productToInsert]);
-
-      if (error) throw error;
+      if (editingProduct) {
+        const { error } = await supabase
+          .from('products')
+          .update(productData)
+          .eq('id', editingProduct.id);
+        if (error) throw error;
+        setNotification({ message: 'Producto actualizado con éxito', type: 'success' });
+      } else {
+        const { error } = await supabase
+          .from('products')
+          .insert([productData]);
+        if (error) throw error;
+        setNotification({ message: 'Producto creado con éxito', type: 'success' });
+      }
       
       setNewProduct({
         name: '',
@@ -311,13 +343,39 @@ export default function App() {
         colors: '',
         sizes: '36,37,38,39,40'
       });
-      setNotification({ message: 'Producto agregado con éxito', type: 'success' });
+      setEditingProduct(null);
     } catch (error) {
-      console.error('Error adding product:', error);
-      setNotification({ message: 'Error al agregar el producto', type: 'error' });
+      console.error('Error saving product:', error);
+      setNotification({ message: 'Error al guardar el producto', type: 'error' });
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleEditClick = (product: any) => {
+    setEditingProduct(product);
+    setNewProduct({
+      name: product.name,
+      category: product.category,
+      promo: product.promo,
+      image: product.image,
+      colors: product.colors.join(', '),
+      sizes: product.sizes.join(', ')
+    });
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingProduct(null);
+    setNewProduct({
+      name: '',
+      category: 'Femenino',
+      promo: 'promo-2600',
+      image: '',
+      colors: '',
+      sizes: '36,37,38,39,40'
+    });
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -357,15 +415,21 @@ export default function App() {
       return;
     }
 
+    if (!modalAgency) {
+      setNotification({ message: 'Por favor, selecciona una agencia de envío', type: 'error' });
+      return;
+    }
+
     const message = `¡Hola BELLA! Quiero realizar un pedido:
     
 🖼️ *Foto del producto:* ${selectedProduct.image}
 
 📌 *Producto:* ${selectedProduct.name}
 🎨 *Color:* ${modalColor}
-📏 *Talle:* ${modalSize}
+📏 *Talle:* ${modalSize} (${parseInt(modalSize) - 2} BR)
 📏 *Plantilla:* ${modalCm.toFixed(1)} cm
 📍 *Destino:* ${modalDept}
+🚚 *Agencia:* ${modalAgency}
 📝 *Detalles:* ${modalDetails || 'Sin detalles adicionales'}
 
 ¿Cómo procedo con el pago?`;
@@ -376,6 +440,37 @@ export default function App() {
   const handleWhatsAppGeneral = () => {
     const text = "Hola BELLA! Quisiera más información sobre el catálogo.";
     window.open(`https://wa.me/59895330959?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handleTryOn = async () => {
+    if (!footImage) {
+      setNotification({ message: 'Por favor, sube una foto de tu pie primero', type: 'error' });
+      return;
+    }
+
+    try {
+      setIsGeneratingTryOn(true);
+      const result = await tryOnShoe(footImage, selectedProduct.image, selectedProduct.name);
+      setTryOnResult(result);
+      setNotification({ message: '¡Prueba virtual generada con éxito!', type: 'success' });
+    } catch (error) {
+      console.error('Error generating try-on:', error);
+      setNotification({ message: 'Error al generar la prueba virtual. Intenta de nuevo.', type: 'error' });
+    } finally {
+      setIsGeneratingTryOn(false);
+    }
+  };
+
+  const handleFootImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFootImage(reader.result as string);
+      setTryOnResult(null);
+    };
+    reader.readAsDataURL(file);
   };
 
   if (selectedProduct) {
@@ -621,6 +716,129 @@ export default function App() {
                 </AnimatePresence>
               </div>
 
+              {/* Shipping Agency Selection */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
+                  <Truck size={14} />
+                  <span>Agencia de Envío</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {SHIPPING_AGENCIES.map((agency) => (
+                    <button
+                      key={agency}
+                      onClick={() => setModalAgency(agency)}
+                      className={cn(
+                        "py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-2",
+                        modalAgency === agency 
+                          ? "bg-brand-pink text-white border-brand-pink shadow-lg shadow-brand-pink/10 scale-105" 
+                          : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
+                      )}
+                    >
+                      {agency}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI Virtual Try-On */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
+                    <Sparkles size={14} className="text-brand-pink" />
+                    <span>Probador Virtual IA</span>
+                  </div>
+                  <button 
+                    onClick={() => setShowTryOn(!showTryOn)}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-border-main shadow-sm",
+                      showTryOn ? "bg-brand-pink text-white border-brand-pink" : "bg-bg-secondary text-text-secondary hover:bg-brand-pink/10"
+                    )}
+                  >
+                    {showTryOn ? "Cerrar Probador" : "Probar con IA"}
+                  </button>
+                </div>
+
+                <AnimatePresence>
+                  {showTryOn && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden space-y-4"
+                    >
+                      <div className="p-6 bg-bg-secondary rounded-2xl border-2 border-dashed border-brand-pink/30 text-center space-y-4">
+                        {!footImage ? (
+                          <div className="space-y-4">
+                            <div className="w-16 h-16 bg-brand-pink/10 rounded-full flex items-center justify-center mx-auto">
+                              <Camera size={32} className="text-brand-pink" />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="font-bold text-text-primary">Sube una foto de tu pie</p>
+                              <p className="text-xs text-text-secondary">Asegúrate de que haya buena luz para un mejor resultado.</p>
+                            </div>
+                            <label className="inline-block bg-brand-pink text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs cursor-pointer hover:bg-brand-pink/90 transition-all shadow-lg shadow-brand-pink/20">
+                              <input type="file" accept="image/*" className="hidden" onChange={handleFootImageUpload} />
+                              SUBIR FOTO
+                            </label>
+                          </div>
+                        ) : (
+                          <div className="space-y-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Tu Foto</p>
+                                <div className="aspect-square rounded-xl overflow-hidden border-2 border-border-main relative">
+                                  <img src={footImage} alt="Tu pie" className="w-full h-full object-cover" />
+                                  <button 
+                                    onClick={() => { setFootImage(null); setTryOnResult(null); }}
+                                    className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-red-500 transition-colors"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Resultado IA</p>
+                                <div className="aspect-square rounded-xl overflow-hidden border-2 border-brand-pink/30 bg-bg-primary flex items-center justify-center relative">
+                                  {tryOnResult ? (
+                                    <img src={tryOnResult} alt="Resultado" className="w-full h-full object-cover" />
+                                  ) : isGeneratingTryOn ? (
+                                    <div className="text-center space-y-3">
+                                      <div className="w-10 h-10 border-4 border-brand-pink border-t-transparent rounded-full animate-spin mx-auto"></div>
+                                      <p className="text-[10px] font-black text-brand-pink uppercase tracking-widest animate-pulse">Generando Magia...</p>
+                                    </div>
+                                  ) : (
+                                    <div className="text-center p-4 opacity-30">
+                                      <Sparkles size={32} className="mx-auto mb-2" />
+                                      <p className="text-[10px] font-bold">Haz clic en generar para ver cómo te quedan</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {!tryOnResult && !isGeneratingTryOn && (
+                              <button 
+                                onClick={handleTryOn}
+                                className="w-full bg-brand-pink text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-brand-pink/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
+                              >
+                                <Sparkles size={20} />
+                                GENERAR PRUEBA VIRTUAL
+                              </button>
+                            )}
+
+                            {tryOnResult && (
+                              <p className="text-[10px] text-text-secondary italic">
+                                * El resultado es una simulación generada por IA para referencia visual.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               {/* Additional Details */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
@@ -697,15 +915,6 @@ export default function App() {
                 >
                   Cómo Comprar
                 </button>
-                <button 
-                  onClick={() => setActiveTab('info')}
-                  className={cn(
-                    "text-sm font-medium transition-colors",
-                    activeTab === 'info' ? "text-brand-pink" : "text-text-secondary hover:text-brand-pink"
-                  )}
-                >
-                  Info & FAQ
-                </button>
               </nav>
 
               <button 
@@ -742,58 +951,38 @@ export default function App() {
         <section className="mb-12">
           <div className="grid grid-cols-1 gap-8">
             {PROMOS.map((promo) => {
-              const [mainDesc, subDesc] = promo.description.split(' (');
               return (
-                <div key={promo.id} className="space-y-2">
-                  <div className={cn(
-                    "inline-block px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ml-2",
-                    promo.id === 'promo-2600' ? "bg-brand-beige text-text-primary" : "bg-[#DAA520] text-white"
-                  )}>
-                    {promo.label}
-                  </div>
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    whileHover={{ scale: 1.005 }}
-                    whileTap={{ scale: 0.995 }}
-                    onClick={() => {
-                      setSelectedPromo(selectedPromo === promo.id ? null : promo.id);
-                      setActiveTab('catalog');
-                    }}
-                    className={cn(
-                      "relative overflow-hidden rounded-xl p-6 text-text-primary shadow-xl cursor-pointer transition-all border-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4",
-                      promo.id === 'promo-2600' 
-                        ? "bg-gradient-to-br from-[#E8E8E8] via-[#F5F5F5] to-[#C0C0C0] border-white/40" 
-                        : "bg-gradient-to-br from-[#FFD700] via-[#FFFACD] to-[#DAA520] border-white/40",
-                      selectedPromo === promo.id ? "ring-4 ring-brand-pink ring-offset-2" : "border-transparent"
-                    )}
-                  >
-                    {/* Shiny Effect Overlay */}
-                    <motion.div 
-                      animate={{ x: ['-100%', '200%'] }}
-                      transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-12 pointer-events-none"
-                    />
-
-                    <div className="relative z-10">
-                      <h2 className="text-2xl font-black tracking-tighter leading-none mb-3">{promo.title}</h2>
-                      <div className="space-y-1">
-                        <p className="text-sm font-bold leading-tight">{mainDesc}</p>
-                        <p className="text-sm font-bold leading-tight">({subDesc}</p>
+                <motion.div 
+                  key={promo.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => {
+                    setSelectedPromo(selectedPromo === promo.id ? null : promo.id);
+                    setActiveTab('catalog');
+                  }}
+                  className={cn(
+                    "relative overflow-hidden rounded-2xl cursor-pointer transition-all shadow-2xl",
+                    selectedPromo === promo.id ? "ring-4 ring-brand-pink ring-offset-4" : ""
+                  )}
+                >
+                  <img 
+                    src={promo.banner} 
+                    alt={promo.title} 
+                    className="w-full h-auto block"
+                    referrerPolicy="no-referrer"
+                  />
+                  
+                  {/* Selection Overlay */}
+                  {selectedPromo === promo.id && (
+                    <div className="absolute inset-0 bg-brand-pink/10 backdrop-blur-[1px] flex items-center justify-center">
+                      <div className="bg-brand-pink text-white px-6 py-2 rounded-full font-black uppercase tracking-widest text-xs shadow-xl">
+                        Seleccionado
                       </div>
                     </div>
-
-                    <div className="relative z-10 flex items-center gap-10 bg-bg-primary/30 backdrop-blur-md px-8 py-4 rounded-lg border border-border-main shadow-inner">
-                      <span className="text-4xl font-black tracking-tighter">${promo.price}</span>
-                      <span className="text-xl font-black uppercase tracking-widest text-text-primary">2 pares</span>
-                    </div>
-
-                    {/* Background Icon */}
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-5 rotate-12 pointer-events-none">
-                      <ShoppingBag size={140} />
-                    </div>
-                  </motion.div>
-                </div>
+                  )}
+                </motion.div>
               );
             })}
           </div>
@@ -879,10 +1068,10 @@ export default function App() {
                           <h3 className="text-lg font-bold text-text-primary mb-4 line-clamp-1">{product.name}</h3>
                           <button 
                             onClick={() => openProductModal(product)}
-                            className="w-full bg-text-primary text-bg-primary py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-brand-pink transition-colors active:scale-95"
+                            className="w-full bg-brand-pink text-white py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-brand-pink/90 transition-all active:bg-brand-beige active:text-brand-pink active:scale-95"
                           >
                             <ShoppingBag size={16} />
-                            Ver Detalles
+                            Me Interesa
                           </button>
                         </div>
                       </motion.div>
@@ -1045,12 +1234,23 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Add Product Form */}
-              <div className="bg-bg-primary p-8 rounded-2xl border border-border-main shadow-xl space-y-6">
-                <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
-                  <Plus className="text-brand-pink" />
-                  Agregar Nuevo Producto
-                </h3>
+              {/* Add/Edit Product Form */}
+              <div className="bg-bg-primary p-6 sm:p-8 rounded-2xl border border-border-main shadow-xl space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                    {editingProduct ? <Pencil className="text-brand-pink" /> : <Plus className="text-brand-pink" />}
+                    {editingProduct ? 'Editar Producto' : 'Crear Nuevo Producto'}
+                  </h3>
+                  {editingProduct && (
+                    <button 
+                      onClick={cancelEdit}
+                      className="text-xs font-black text-text-secondary uppercase tracking-widest hover:text-brand-pink flex items-center gap-1"
+                    >
+                      <X size={14} />
+                      Cancelar Edición
+                    </button>
+                  )}
+                </div>
                 <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Nombre del Producto</label>
@@ -1088,6 +1288,7 @@ export default function App() {
                       <option value="Femenino">Femenino</option>
                       <option value="Masculino">Masculino</option>
                       <option value="Infantil">Infantil</option>
+                      <option value="Unisex">Unisex</option>
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -1128,14 +1329,21 @@ export default function App() {
                     <button 
                       type="submit"
                       disabled={uploading}
-                      className="w-full bg-brand-pink text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-brand-pink/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={cn(
+                        "w-full py-5 rounded-xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg active:scale-95",
+                        uploading 
+                          ? "bg-brand-pink/40 text-white" 
+                          : "bg-[#FF69B4] hover:bg-[#FF1493] text-white" // Stronger pink
+                      )}
                     >
                       {uploading ? (
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
                       ) : (
-                        <Save size={20} />
+                        editingProduct ? <Save size={24} /> : <Plus size={24} />
                       )}
-                      {uploading ? 'Procesando...' : 'Guardar Producto'}
+                      {uploading 
+                        ? (editingProduct ? 'Actualizando Producto...' : 'Creando Producto...') 
+                        : (editingProduct ? 'Guardar Cambios' : 'Crear Producto')}
                     </button>
                   </div>
                 </form>
@@ -1146,18 +1354,28 @@ export default function App() {
                 <h3 className="text-xl font-bold text-text-primary">Gestionar Catálogo Actual</h3>
                 <div className="grid grid-cols-1 gap-4">
                   {products.map(product => (
-                    <div key={product.id} className="bg-bg-primary p-4 rounded-xl border border-border-main flex items-center gap-4 shadow-sm">
+                    <div key={product.id} className="bg-bg-primary p-4 rounded-xl border border-border-main flex items-center gap-4 shadow-sm hover:border-brand-pink/30 transition-colors">
                       <img src={product.image} alt="" className="w-16 h-16 object-cover rounded-lg" referrerPolicy="no-referrer" />
                       <div className="flex-grow">
-                        <h4 className="font-bold text-text-primary">{product.name}</h4>
-                        <p className="text-xs text-text-secondary uppercase tracking-widest font-black">{product.category} • {PROMOS.find(p => p.id === product.promo)?.label}</p>
+                        <h4 className="font-bold text-text-primary text-sm sm:text-base">{product.name}</h4>
+                        <p className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-widest font-black">{product.category} • {PROMOS.find(p => p.id === product.promo)?.label}</p>
                       </div>
-                      <button 
-                        onClick={() => setConfirmDelete(product.id)}
-                        className="p-3 text-text-secondary hover:text-red-500 hover:bg-red-50 transition-all rounded-lg"
-                      >
-                        <Trash2 size={20} />
-                      </button>
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <button 
+                          onClick={() => handleEditClick(product)}
+                          className="p-3 text-text-secondary hover:text-brand-pink hover:bg-brand-pink/5 transition-all rounded-lg"
+                          title="Editar"
+                        >
+                          <Pencil size={20} />
+                        </button>
+                        <button 
+                          onClick={() => setConfirmDelete(product.id)}
+                          className="p-3 text-text-secondary hover:text-red-500 hover:bg-red-50 transition-all rounded-lg"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1232,9 +1450,17 @@ export default function App() {
 
       {/* Footer */}
       <footer className="bg-bg-primary border-t border-border-main py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="text-[10px] text-text-secondary uppercase tracking-widest">
-            © {new Date().getFullYear()} BELLA FOOTWEAR. TODOS LOS DERECHOS RESERVADOS.
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+          <div className="space-y-3">
+            <p className="text-brand-pink font-black text-sm sm:text-base italic">
+              * No trabajamos con cambios, por ese motivo es importante medir la plantilla con exactitud.
+            </p>
+            <p className="text-brand-pink font-black text-sm sm:text-base italic">
+              * Como medios de pagos tenemos, transferencias bancarias, depósitos en Abitab o red pagos y mercado pago en hasta 12 cuotas con un pequeño costo adicional.
+            </p>
+          </div>
+          <div className="text-[10px] text-text-secondary uppercase tracking-widest pt-4 border-t border-border-main/50">
+            © {new Date().getFullYear()} BELLA. TODOS LOS DERECHOS RESERVADOS.
           </div>
         </div>
       </footer>
