@@ -119,8 +119,8 @@ const SizeReference = ({ cm, onChange, currentSize }: { cm: string; onChange: (v
         <label className="text-xs font-black text-text-secondary uppercase tracking-widest block text-center">
           Escribe los centimetros de tu plantilla para una medida más exacta
         </label>
-        <div className="flex justify-center">
-          <div className="relative w-full max-w-[200px]">
+        <div className="flex justify-center items-center gap-3">
+          <div className="w-full max-w-[160px]">
             <input
               type="number"
               min="12"
@@ -131,8 +131,8 @@ const SizeReference = ({ cm, onChange, currentSize }: { cm: string; onChange: (v
               placeholder="Ej: 24.5"
               className="w-full p-4 rounded-xl bg-bg-secondary border-2 border-brand-pink text-center text-2xl font-black text-brand-pink focus:outline-none focus:ring-4 focus:ring-brand-pink/20 transition-all"
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-brand-pink/40 text-lg">CM</span>
           </div>
+          <span className="font-black text-brand-pink text-xl">CM</span>
         </div>
         <p className="text-[10px] text-center text-text-secondary italic mt-2">
           Talle sugerido: {formatSize(currentSize)}
@@ -1178,11 +1178,11 @@ ${shippingData}
         <section className="mb-12">
           <div className="text-center mb-6">
             <p className="text-sm sm:text-lg font-black text-brand-pink uppercase tracking-tighter leading-tight">
-              Hacé clic en la imagen de la promo <br /> y elegí tus pares
+              Haz clic en la imagen y selecciona tu combo favorito.
             </p>
           </div>
           <div className="grid grid-cols-1 gap-8">
-            {PROMOS.map((promo) => {
+            {PROMOS.filter(p => !p.hideBanner).map((promo) => {
               return (
                 <motion.div 
                   key={promo.id}
@@ -1579,7 +1579,7 @@ ${shippingData}
                       className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
                     >
                       {PROMOS.map(p => (
-                        <option key={p.id} value={p.id}>{p.label} (${p.price})</option>
+                        <option key={p.id} value={p.id}>{p.label}{p.price > 0 ? ` ($${p.price})` : ''}</option>
                       ))}
                     </select>
                   </div>
@@ -1736,13 +1736,15 @@ ${shippingData}
 
       {/* Footer */}
       <footer className="bg-bg-primary border-t border-border-main py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          <div className="space-y-3">
-            <p className="text-brand-pink font-black text-sm sm:text-base italic">
-              * No trabajamos con cambios, por ese motivo es importante medir la plantilla con exactitud.
-            </p>
-            <p className="text-brand-pink font-black text-sm sm:text-base italic">
-              * Como medios de pagos tenemos, transferencias bancarias, depósitos en Abitab o red pagos y mercado pago en hasta 12 cuotas con un pequeño costo adicional.
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+          <div className="max-w-2xl mx-auto space-y-4">
+            <div className="bg-brand-pink/5 border border-brand-pink/20 p-6 rounded-2xl">
+              <p className="text-brand-pink font-black text-sm sm:text-base">
+                Atención: No se procesan cambios, por favor verifique su talla con exactitud antes de realizar su pedido.
+              </p>
+            </div>
+            <p className="text-text-primary font-bold text-sm sm:text-base">
+              Formas de pago: Transferencia bancaria, depósitos, y Mercado Pago hasta 12 cuotas.
             </p>
           </div>
           <div className="text-[10px] text-text-secondary uppercase tracking-widest pt-4 border-t border-border-main/50">

@@ -18,6 +18,26 @@ export const PROMOS = [
     price: 2990,
     individualPrice: 1690,
     banner: "https://i.imgur.com/olI6lxq.jpeg"
+  },
+  {
+    id: "importados",
+    title: "Importados",
+    label: "Importados",
+    description: "Calzado importado de alta calidad.",
+    price: 0,
+    individualPrice: 0,
+    banner: "",
+    hideBanner: true
+  },
+  {
+    id: "infantiles",
+    title: "Infantiles",
+    label: "Infantiles",
+    description: "Calzado para los más pequeños.",
+    price: 0,
+    individualPrice: 0,
+    banner: "",
+    hideBanner: true
   }
 ];
 
@@ -44,7 +64,7 @@ export const FAQ_ITEMS = [
   },
   {
     question: "¿Cuáles son los medios de pago?",
-    answer: "Aceptamos transferencias bancarias, depósitos en Abitab o Red Pagos, y Mercado Pago (hasta 12 cuotas con un pequeño costo adicional)."
+    answer: "Formas de pago: Transferencia bancaria, depósitos, y Mercado Pago hasta 12 cuotas."
   }
 ];
 
