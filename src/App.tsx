@@ -112,59 +112,30 @@ const formatSize = (eurSize: string) => {
   return `${br} BR (${eur} EUR)`;
 };
 
-const SizeReference = ({ cm, onChange, currentSize }: { cm: number; onChange: (val: number) => void; currentSize: string }) => {
-  // Scale factor for the SVG insole - ensure it fits at 29cm
-  const scale = (cm / 29) * 0.85; 
-
+const SizeReference = ({ cm, onChange, currentSize }: { cm: string; onChange: (val: string) => void; currentSize: string }) => {
   return (
-    <div className="space-y-6 p-6 bg-bg-primary rounded-xl border border-border-main shadow-inner">
-      <div className="flex justify-center items-center h-48 bg-bg-secondary rounded-lg relative">
-        <motion.div
-          animate={{ scale }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="relative flex items-center justify-center"
-        >
-          {/* SVG Insole Design - Horizontal */}
-          <svg width="240" height="120" viewBox="0 0 240 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M235 60C235 40 220 20 190 15C160 10 130 25 110 30C90 35 60 25 30 30C0 35 0 85 30 90C60 95 90 85 110 90C130 95 160 110 190 105C220 100 235 80 235 60Z" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="2" className="text-brand-pink"/>
-            <path d="M40 40C40 40 35 50 35 60C35 70 40 80 40 80" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-brand-pink"/>
-            <circle cx="180" cy="60" r="20" stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" className="text-brand-beige"/>
-            <text x="125" y="65" textAnchor="middle" fill="currentColor" fontSize="12" fontWeight="bold" className="select-none text-brand-pink">BELLA</text>
-          </svg>
-          <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-brand-pink text-white px-3 py-1 rounded-full shadow-lg z-10 flex flex-col items-center min-w-[80px]">
-            <span className="text-[10px] font-bold leading-tight">{cm.toFixed(1)} cm</span>
-            <span className="text-[8px] font-black opacity-90 leading-tight">{formatSize(currentSize)}</span>
+    <div className="space-y-4 p-6 bg-bg-primary rounded-xl border border-border-main shadow-inner">
+      <div className="space-y-2">
+        <label className="text-xs font-black text-text-secondary uppercase tracking-widest block text-center">
+          Escribe los centimetros de tu plantilla para una medida más exacta
+        </label>
+        <div className="flex justify-center">
+          <div className="relative w-full max-w-[200px]">
+            <input
+              type="number"
+              min="12"
+              max="29"
+              step="0.1"
+              value={cm}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="Ej: 24.5"
+              className="w-full p-4 rounded-xl bg-bg-secondary border-2 border-brand-pink text-center text-2xl font-black text-brand-pink focus:outline-none focus:ring-4 focus:ring-brand-pink/20 transition-all"
+            />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-brand-pink/40 text-lg">CM</span>
           </div>
-        </motion.div>
-        
-        {/* Ruler Background */}
-        <div className="absolute bottom-2 left-4 right-4 h-1 bg-border-main rounded-full">
-          {Array.from({ length: 11 }).map((_, i) => (
-            <div key={i} className="absolute h-2 w-0.5 bg-text-secondary/20" style={{ left: `${i * 10}%` }} />
-          ))}
         </div>
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex justify-between text-xs font-bold text-text-secondary uppercase tracking-widest">
-          <span>12 cm</span>
-          <div className="flex flex-col items-center">
-            <span className="text-brand-pink">{cm.toFixed(1)} cm</span>
-            <span className="text-[10px] text-text-secondary">{formatSize(currentSize)}</span>
-          </div>
-          <span>29 cm</span>
-        </div>
-        <input
-          type="range"
-          min="12"
-          max="29"
-          step="0.1"
-          value={cm}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
-          className="w-full h-2 bg-bg-secondary rounded-lg appearance-none cursor-pointer accent-brand-pink"
-        />
-        <p className="text-[10px] text-center text-text-secondary italic">
-          Desliza para ajustar los centímetros de la plantilla. El talle se seleccionará automáticamente.
+        <p className="text-[10px] text-center text-text-secondary italic mt-2">
+          Talle sugerido: {formatSize(currentSize)}
         </p>
       </div>
     </div>
@@ -195,7 +166,7 @@ export default function App() {
   const [modalSize, setModalSize] = useState('');
   const [modalDept, setModalDept] = useState('');
   const [modalAgency, setModalAgency] = useState('');
-  const [modalCm, setModalCm] = useState(25);
+  const [modalCm, setModalCm] = useState<string>('25');
   const [modalName, setModalName] = useState('');
   const [modalPayment, setModalPayment] = useState('');
   const [modalFullName, setModalFullName] = useState('');
@@ -265,7 +236,9 @@ export default function App() {
     };
   }, []);
 
-  const cmToSize = (cm: number) => {
+  const cmToSize = (cmStr: string) => {
+    const cm = parseFloat(cmStr);
+    if (isNaN(cm)) return '36';
     // Kids range (approximate)
     if (cm < 13.0) return '20';
     if (cm < 13.5) return '21';
@@ -297,7 +270,7 @@ export default function App() {
     return '45';
   };
 
-  const handleCmChange = (cm: number) => {
+  const handleCmChange = (cm: string) => {
     setModalCm(cm);
     const calculatedSize = cmToSize(cm);
     // Only update if the size is available for this product
@@ -323,7 +296,7 @@ export default function App() {
     setModalSize(product.sizes[0]);
     setModalDept('');
     setModalAgency('');
-    setModalCm(25);
+    setModalCm('25');
     setModalName('');
     setModalPayment('');
     setModalFullName('');
@@ -370,6 +343,7 @@ export default function App() {
     name: '',
     category: 'Femenino',
     promo: 'promo-2600',
+    price: '',
     image: '', // This will store JSON string of images array
     images: [] as {url: string, color: string}[],
     sizes: '36,37,38,39,40'
@@ -402,6 +376,7 @@ export default function App() {
         name: newProduct.name,
         category: newProduct.category,
         promo: newProduct.promo,
+        price: newProduct.price,
         image: JSON.stringify(newProduct.images),
         colors: extractedColors,
         sizes: typeof newProduct.sizes === 'string' ? newProduct.sizes.split(',').map(s => s.trim()) : newProduct.sizes
@@ -445,6 +420,7 @@ export default function App() {
       name: product.name,
       category: product.category,
       promo: product.promo,
+      price: product.price || '',
       image: product.image,
       images: parsedImages,
       sizes: product.sizes.join(', ')
@@ -459,6 +435,7 @@ export default function App() {
       name: '',
       category: 'Femenino',
       promo: 'promo-2600',
+      price: '',
       image: '',
       images: [],
       sizes: '36,37,38,39,40'
@@ -620,40 +597,49 @@ export default function App() {
     }
 
     let productDetails = '';
+    let totalValue = '';
+
     if (promoFirstPair) {
+      const promo = PROMOS.find(p => p.id === selectedPromo);
+      totalValue = promo ? String(promo.price) : '';
       productDetails = `
-🔥 *PROMO 2 PARES:*
+🔗 *Link 1:* ${getProductImage(promoFirstPair.product, promoFirstPair.color)}
+🔗 *Link 2:* ${getProductImage(selectedProduct, modalColor)}
+
+⭐ *${promo?.title || 'Promo'}* ⭐
+
 1️⃣ *Par 1:* ${promoFirstPair.product.name}
 🎨 *Color:* ${promoFirstPair.color}
 📏 *Talle:* ${promoFirstPair.size} (${parseInt(promoFirstPair.size) - 2} BR)
-📏 *Plantilla:* ${promoFirstPair.cm.toFixed(1)} cm
-🖼️ *Foto 1:* ${getProductImage(promoFirstPair.product, promoFirstPair.color)}
+📏 *Plantilla:* ${promoFirstPair.cm} cm
 
 2️⃣ *Par 2:* ${selectedProduct.name}
 🎨 *Color:* ${modalColor}
 📏 *Talle:* ${modalSize} (${parseInt(modalSize) - 2} BR)
-📏 *Plantilla:* ${modalCm.toFixed(1)} cm
-🖼️ *Foto 2:* ${getProductImage(selectedProduct, modalColor)}
+📏 *Plantilla:* ${modalCm} cm
 `;
     } else {
+      totalValue = selectedProduct.price || '';
       productDetails = `
-🖼️ *Foto del producto:* ${getProductImage(selectedProduct, modalColor)}
+🔗 *Link:* ${getProductImage(selectedProduct, modalColor)}
 
 📌 *Producto:* ${selectedProduct.name}
 🎨 *Color:* ${modalColor}
 📏 *Talle:* ${modalSize} (${parseInt(modalSize) - 2} BR)
-📏 *Plantilla:* ${modalCm.toFixed(1)} cm
+📏 *Plantilla:* ${modalCm} cm
 `;
     }
 
-    const message = `¡Hola BELLA! Quiero realizar un pedido:
+    const message = `¡Hola BELLA! Quiero realizar este pedido:
 ${productDetails}
 📍 *Destino:* ${modalDept}
 ${isRivera ? '' : `🚚 *Agencia:* ${modalAgency}\n`}
-💳 *Método de Pago:* ${modalPayment}
-
 📦 *Datos de Envío:*
 ${shippingData}
+
+💳 *Método de Pago:* ${modalPayment}
+
+💰 *Valor total a pagar:* $${totalValue}
 
 ¿Cómo procedo con el pago?`;
 
@@ -739,6 +725,11 @@ ${shippingData}
                     <span>Stock Disponible</span>
                   </div>
                 </div>
+                {selectedProduct.price && !selectedPromo && (
+                  <div className="mt-4">
+                    <span className="text-3xl font-black text-brand-pink">${selectedProduct.price}</span>
+                  </div>
+                )}
               </div>
 
               {/* Product Info Card */}
@@ -943,38 +934,6 @@ ${shippingData}
                     </div>
                   )}
 
-                  {/* Payment Method Selection */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
-                      <CreditCard size={14} />
-                      <span>¿Cómo le gustaría realizar el pago?</span>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3">
-                      {(modalDept.toLowerCase() === 'rivera' 
-                        ? ['Transferencia', 'Mercado Pago en hasta 12 cuotas con recargo', 'Efectivo']
-                        : [
-                            'Transferencia', 
-                            'Depósito Abitab/red pagos', 
-                            'Mercado Pago en hasta 12 cuotas con recargo', 
-                            'Efectivo únicamente en la ciudad de Rivera'
-                          ]
-                      ).map((method) => (
-                        <button
-                          key={method}
-                          onClick={() => setModalPayment(method)}
-                          className={cn(
-                            "p-4 rounded-xl text-xs font-bold text-left transition-all border-2",
-                            modalPayment === method 
-                              ? "bg-brand-pink text-white border-brand-pink shadow-lg" 
-                              : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
-                          )}
-                        >
-                          {method}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
                   {/* Shipping Data */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
@@ -1051,6 +1010,38 @@ ${shippingData}
                           </div>
                         </>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Payment Method Selection */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
+                      <CreditCard size={14} />
+                      <span>¿Cómo le gustaría realizar el pago?</span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                      {(modalDept.toLowerCase() === 'rivera' 
+                        ? ['Transferencia', 'Mercado Pago en hasta 12 cuotas con recargo', 'Efectivo']
+                        : [
+                            'Transferencia', 
+                            'Depósito Abitab/red pagos', 
+                            'Mercado Pago en hasta 12 cuotas con recargo', 
+                            'Efectivo únicamente en la ciudad de Rivera'
+                          ]
+                      ).map((method) => (
+                        <button
+                          key={method}
+                          onClick={() => setModalPayment(method)}
+                          className={cn(
+                            "p-4 rounded-xl text-xs font-bold text-left transition-all border-2",
+                            modalPayment === method 
+                              ? "bg-brand-pink text-white border-brand-pink shadow-lg" 
+                              : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
+                          )}
+                        >
+                          {method}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -1185,9 +1176,9 @@ ${shippingData}
 
         {/* Hero / Promos */}
         <section className="mb-12">
-          <div className="text-center mb-6 overflow-x-auto no-scrollbar">
-            <p className="text-sm sm:text-lg font-black text-brand-pink uppercase tracking-tighter whitespace-nowrap">
-              Clica en la imagen de la promo y elegí tus pares
+          <div className="text-center mb-6">
+            <p className="text-sm sm:text-lg font-black text-brand-pink uppercase tracking-tighter leading-tight">
+              Hacé clic en la imagen de la promo <br /> y elegí tus pares
             </p>
           </div>
           <div className="grid grid-cols-1 gap-8">
@@ -1318,7 +1309,12 @@ ${shippingData}
 
                         <div className="p-4 sm:p-6">
                           <p className="text-[10px] font-bold text-brand-pink uppercase tracking-widest mb-1">{product.category}</p>
-                          <h3 className="text-lg font-bold text-text-primary mb-4 line-clamp-1">{product.name}</h3>
+                          <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-text-primary line-clamp-1">{product.name}</h3>
+                            {product.price && (
+                              <span className="text-brand-pink font-black">${product.price}</span>
+                            )}
+                          </div>
                           <button 
                             onClick={() => openProductModal(product)}
                             className="w-full bg-brand-pink text-white py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-brand-pink/90 transition-all active:bg-brand-beige active:text-brand-pink active:scale-95"
@@ -1586,6 +1582,16 @@ ${shippingData}
                         <option key={p.id} value={p.id}>{p.label} (${p.price})</option>
                       ))}
                     </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Precio Individual (Opcional)</label>
+                    <input 
+                      type="text" 
+                      value={newProduct.price}
+                      onChange={e => setNewProduct({...newProduct, price: e.target.value})}
+                      placeholder="Ej: 1500"
+                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Talles (separados por coma)</label>
