@@ -674,15 +674,15 @@ ${shippingData}
         <header className="sticky top-0 z-50 bg-bg-primary/80 backdrop-blur-md border-b border-border-main">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
-              <button 
-                onClick={() => setSelectedProduct(null)}
-                className="flex items-center gap-2 text-text-secondary hover:text-brand-pink transition-colors font-bold"
-              >
-                <X size={20} />
-                <span>Volver al Catálogo</span>
-              </button>
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
+                <div 
+                  onClick={() => {
+                    setSelectedProduct(null);
+                    setPromoFirstPair(null);
+                    setSelectedPromo(null);
+                  }}
+                  className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                >
                   <h1 className="text-xl font-bold tracking-tighter text-brand-pink">{STORE_NAME}</h1>
                 </div>
                 <button 
@@ -730,9 +730,11 @@ ${shippingData}
               <div>
                 <h2 className="text-4xl font-black text-text-primary mb-2 leading-tight">{selectedProduct.name}</h2>
                 <div className="flex flex-wrap gap-2">
-                  <div className="inline-block bg-brand-pink text-white px-4 py-1 rounded-full text-sm font-black uppercase tracking-widest shadow-lg shadow-brand-pink/10">
-                    <span>{PROMOS.find(p => p.id === selectedProduct.promo)?.title}</span>
-                  </div>
+                  {selectedPromo && (
+                    <div className="inline-block bg-brand-pink text-white px-4 py-1 rounded-full text-sm font-black uppercase tracking-widest shadow-lg shadow-brand-pink/10">
+                      <span>{PROMOS.find(p => p.id === selectedProduct.promo)?.title}</span>
+                    </div>
+                  )}
                   <div className="inline-block bg-text-primary text-bg-primary px-4 py-1 rounded-full text-sm font-black uppercase tracking-widest shadow-lg">
                     <span>Stock Disponible</span>
                   </div>
