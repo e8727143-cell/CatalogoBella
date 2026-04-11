@@ -1092,7 +1092,7 @@ ${shippingData}
 
         <footer className="bg-bg-primary border-t border-border-main py-12 mt-12">
           <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-text-secondary text-xs font-bold uppercase tracking-widest">BELLA FOOTWEAR URUGUAY</p>
+            <p className="text-text-secondary text-xs font-bold uppercase tracking-widest">BELLA URUGUAY</p>
           </div>
         </footer>
       </div>
@@ -1748,7 +1748,7 @@ ${shippingData}
             </p>
           </div>
           <div className="text-[10px] text-text-secondary uppercase tracking-widest pt-4 border-t border-border-main/50">
-            © {new Date().getFullYear()} BELLA. TODOS LOS DERECHOS RESERVADOS.
+            BELLA URUGUAY
           </div>
         </div>
       </footer>
