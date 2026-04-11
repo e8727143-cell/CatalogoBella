@@ -26,8 +26,7 @@ import {
   Save,
   LogOut,
   Pencil,
-  Sparkles,
-  Camera
+  User
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { 
@@ -37,7 +36,6 @@ import {
   URUGUAY_DEPARTMENTS,
   SHIPPING_AGENCIES 
 } from './constants';
-import { tryOnShoe } from './services/geminiService';
 import { supabase } from './lib/supabase';
 
 // --- Components ---
@@ -154,15 +152,9 @@ export default function App() {
   const [modalDept, setModalDept] = useState('');
   const [modalAgency, setModalAgency] = useState('');
   const [modalCm, setModalCm] = useState(25);
-  const [modalDetails, setModalDetails] = useState('');
+  const [modalName, setModalName] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [showSizeRef, setShowSizeRef] = useState(false);
-  
-  // AI Try-On States
-  const [footImage, setFootImage] = useState<string | null>(null);
-  const [tryOnResult, setTryOnResult] = useState<string | null>(null);
-  const [isGeneratingTryOn, setIsGeneratingTryOn] = useState(false);
-  const [showTryOn, setShowTryOn] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
@@ -259,13 +251,9 @@ export default function App() {
     setModalDept('');
     setModalAgency('');
     setModalCm(25);
-    setModalDetails('');
+    setModalName('');
     setShowMap(false);
     setShowSizeRef(false);
-    setFootImage(null);
-    setTryOnResult(null);
-    setIsGeneratingTryOn(false);
-    setShowTryOn(false);
   };
 
   const handleAdminLogin = () => {
@@ -430,7 +418,7 @@ export default function App() {
 📏 *Plantilla:* ${modalCm.toFixed(1)} cm
 📍 *Destino:* ${modalDept}
 🚚 *Agencia:* ${modalAgency}
-📝 *Detalles:* ${modalDetails || 'Sin detalles adicionales'}
+👤 *Nombre:* ${modalName || 'No especificado'}
 
 ¿Cómo procedo con el pago?`;
 
@@ -440,37 +428,6 @@ export default function App() {
   const handleWhatsAppGeneral = () => {
     const text = "Hola BELLA! Quisiera más información sobre el catálogo.";
     window.open(`https://wa.me/59895330959?text=${encodeURIComponent(text)}`, '_blank');
-  };
-
-  const handleTryOn = async () => {
-    if (!footImage) {
-      setNotification({ message: 'Por favor, sube una foto de tu pie primero', type: 'error' });
-      return;
-    }
-
-    try {
-      setIsGeneratingTryOn(true);
-      const result = await tryOnShoe(footImage, selectedProduct.image, selectedProduct.name);
-      setTryOnResult(result);
-      setNotification({ message: '¡Prueba virtual generada con éxito!', type: 'success' });
-    } catch (error) {
-      console.error('Error generating try-on:', error);
-      setNotification({ message: 'Error al generar la prueba virtual. Intenta de nuevo.', type: 'error' });
-    } finally {
-      setIsGeneratingTryOn(false);
-    }
-  };
-
-  const handleFootImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setFootImage(reader.result as string);
-      setTryOnResult(null);
-    };
-    reader.readAsDataURL(file);
   };
 
   if (selectedProduct) {
@@ -740,116 +697,18 @@ export default function App() {
                 </div>
               </div>
 
-              {/* AI Virtual Try-On */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
-                    <Sparkles size={14} className="text-brand-pink" />
-                    <span>Probador Virtual IA</span>
-                  </div>
-                  <button 
-                    onClick={() => setShowTryOn(!showTryOn)}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-border-main shadow-sm",
-                      showTryOn ? "bg-brand-pink text-white border-brand-pink" : "bg-bg-secondary text-text-secondary hover:bg-brand-pink/10"
-                    )}
-                  >
-                    {showTryOn ? "Cerrar Probador" : "Probar con IA"}
-                  </button>
-                </div>
-
-                <AnimatePresence>
-                  {showTryOn && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden space-y-4"
-                    >
-                      <div className="p-6 bg-bg-secondary rounded-2xl border-2 border-dashed border-brand-pink/30 text-center space-y-4">
-                        {!footImage ? (
-                          <div className="space-y-4">
-                            <div className="w-16 h-16 bg-brand-pink/10 rounded-full flex items-center justify-center mx-auto">
-                              <Camera size={32} className="text-brand-pink" />
-                            </div>
-                            <div className="space-y-1">
-                              <p className="font-bold text-text-primary">Sube una foto de tu pie</p>
-                              <p className="text-xs text-text-secondary">Asegúrate de que haya buena luz para un mejor resultado.</p>
-                            </div>
-                            <label className="inline-block bg-brand-pink text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs cursor-pointer hover:bg-brand-pink/90 transition-all shadow-lg shadow-brand-pink/20">
-                              <input type="file" accept="image/*" className="hidden" onChange={handleFootImageUpload} />
-                              SUBIR FOTO
-                            </label>
-                          </div>
-                        ) : (
-                          <div className="space-y-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Tu Foto</p>
-                                <div className="aspect-square rounded-xl overflow-hidden border-2 border-border-main relative">
-                                  <img src={footImage} alt="Tu pie" className="w-full h-full object-cover" />
-                                  <button 
-                                    onClick={() => { setFootImage(null); setTryOnResult(null); }}
-                                    className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-red-500 transition-colors"
-                                  >
-                                    <X size={16} />
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Resultado IA</p>
-                                <div className="aspect-square rounded-xl overflow-hidden border-2 border-brand-pink/30 bg-bg-primary flex items-center justify-center relative">
-                                  {tryOnResult ? (
-                                    <img src={tryOnResult} alt="Resultado" className="w-full h-full object-cover" />
-                                  ) : isGeneratingTryOn ? (
-                                    <div className="text-center space-y-3">
-                                      <div className="w-10 h-10 border-4 border-brand-pink border-t-transparent rounded-full animate-spin mx-auto"></div>
-                                      <p className="text-[10px] font-black text-brand-pink uppercase tracking-widest animate-pulse">Generando Magia...</p>
-                                    </div>
-                                  ) : (
-                                    <div className="text-center p-4 opacity-30">
-                                      <Sparkles size={32} className="mx-auto mb-2" />
-                                      <p className="text-[10px] font-bold">Haz clic en generar para ver cómo te quedan</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            {!tryOnResult && !isGeneratingTryOn && (
-                              <button 
-                                onClick={handleTryOn}
-                                className="w-full bg-brand-pink text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-brand-pink/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
-                              >
-                                <Sparkles size={20} />
-                                GENERAR PRUEBA VIRTUAL
-                              </button>
-                            )}
-
-                            {tryOnResult && (
-                              <p className="text-[10px] text-text-secondary italic">
-                                * El resultado es una simulación generada por IA para referencia visual.
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Additional Details */}
+              {/* Name Field */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
-                  <Info size={14} />
-                  <span>Detalles o Notas</span>
+                  <User size={14} />
+                  <span>Tu Nombre (Opcional)</span>
                 </div>
-                <textarea
-                  placeholder="Escribe aquí cualquier detalle adicional para tu pedido..."
-                  value={modalDetails}
-                  onChange={(e) => setModalDetails(e.target.value)}
-                  className="w-full p-6 rounded-[1rem] bg-bg-secondary border-2 border-border-main focus:outline-none focus:border-brand-pink text-sm min-h-[120px] resize-none transition-all text-text-primary"
+                <input
+                  type="text"
+                  placeholder="Escribe tu nombre aquí..."
+                  value={modalName}
+                  onChange={(e) => setModalName(e.target.value)}
+                  className="w-full p-6 rounded-[1rem] bg-bg-secondary border-2 border-border-main focus:outline-none focus:border-brand-pink text-sm transition-all text-text-primary"
                 />
               </div>
 
