@@ -106,10 +106,7 @@ const UruguayMap = ({ selected, onSelect }: { selected: string; onSelect: (dept:
 };
 
 const formatSize = (eurSize: string) => {
-  const eur = parseInt(eurSize);
-  if (isNaN(eur)) return eurSize;
-  const br = eur - 2;
-  return `${br} BR (${eur} EUR)`;
+  return `${eurSize} EUR`;
 };
 
 const SizeReference = ({ cm, onChange, currentSize }: { cm: string; onChange: (val: string) => void; currentSize: string }) => {
@@ -610,12 +607,12 @@ export default function App() {
 
 1️⃣ *Par 1:* ${promoFirstPair.product.name}
 🎨 *Color:* ${promoFirstPair.color}
-📏 *Talle:* ${promoFirstPair.size} (${parseInt(promoFirstPair.size) - 2} BR)
+📏 *Talle:* ${promoFirstPair.size} EUR
 📏 *Plantilla:* ${promoFirstPair.cm} cm
 
 2️⃣ *Par 2:* ${selectedProduct.name}
 🎨 *Color:* ${modalColor}
-📏 *Talle:* ${modalSize} (${parseInt(modalSize) - 2} BR)
+📏 *Talle:* ${modalSize} EUR
 📏 *Plantilla:* ${modalCm} cm
 `;
     } else {
@@ -625,7 +622,7 @@ export default function App() {
 
 📌 *Producto:* ${selectedProduct.name}
 🎨 *Color:* ${modalColor}
-📏 *Talle:* ${modalSize} (${parseInt(modalSize) - 2} BR)
+📏 *Talle:* ${modalSize} EUR
 📏 *Plantilla:* ${modalCm} cm
 `;
     }
@@ -807,7 +804,7 @@ ${shippingData}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
                     <Maximize2 size={14} />
-                    <span>Seleccionar Talle (BR / EUR)</span>
+                    <span>Seleccionar Talle</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -816,14 +813,13 @@ ${shippingData}
                       key={size}
                       onClick={() => setModalSize(size)}
                       className={cn(
-                        "w-14 h-14 rounded-lg text-[10px] font-bold transition-all border-2 flex flex-col items-center justify-center leading-tight",
+                        "w-14 h-14 rounded-lg text-sm font-black transition-all border-2 flex items-center justify-center",
                         modalSize === size 
                           ? "bg-brand-pink text-white border-brand-pink shadow-xl shadow-brand-pink/10 scale-105" 
                           : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
                       )}
                     >
-                      <span className="font-black text-sm">{parseInt(size) - 2}</span>
-                      <span className="opacity-70">({size})</span>
+                      {size}
                     </button>
                   ))}
                 </div>
@@ -1062,7 +1058,7 @@ ${shippingData}
                     />
                     <div>
                       <p className="font-bold text-text-primary text-sm">{promoFirstPair.product.name}</p>
-                      <p className="text-xs text-text-secondary">{promoFirstPair.color} | Talle {parseInt(promoFirstPair.size) - 2}</p>
+                      <p className="text-xs text-text-secondary">{promoFirstPair.color} | Talle {promoFirstPair.size} EUR</p>
                     </div>
                   </div>
                 </div>
