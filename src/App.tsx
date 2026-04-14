@@ -163,7 +163,7 @@ export default function App() {
   const [modalSize, setModalSize] = useState('');
   const [modalDept, setModalDept] = useState('');
   const [modalAgency, setModalAgency] = useState('');
-  const [modalCm, setModalCm] = useState<string>('25');
+  const [modalCm, setModalCm] = useState<string>('0');
   const [modalName, setModalName] = useState('');
   const [modalPayment, setModalPayment] = useState('');
   const [modalFullName, setModalFullName] = useState('');
@@ -293,7 +293,7 @@ export default function App() {
     setModalSize(product.sizes[0]);
     setModalDept('');
     setModalAgency('');
-    setModalCm('25');
+    setModalCm('0');
     setModalName('');
     setModalPayment('');
     setModalFullName('');
