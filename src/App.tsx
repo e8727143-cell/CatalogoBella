@@ -819,7 +819,10 @@ ${shippingData}
                           : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
                       )}
                     >
-                      {size}
+                      <div className="flex flex-col items-center leading-none">
+                        <span>{size}</span>
+                        <span className="text-[8px] opacity-70 mt-0.5">EUR</span>
+                      </div>
                     </button>
                   ))}
                 </div>
