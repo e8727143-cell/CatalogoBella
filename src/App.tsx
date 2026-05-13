@@ -105,16 +105,13 @@ const UruguayMap = ({ selected, onSelect }: { selected: string; onSelect: (dept:
   );
 };
 
-const formatSize = (eurSize: string) => {
-  return `${eurSize} EUR`;
-};
 
-const SizeReference = ({ cm, onChange, currentSize }: { cm: string; onChange: (val: string) => void; currentSize: string }) => {
+const SizeReference = ({ cm, onChange }: { cm: string; onChange: (val: string) => void }) => {
   return (
     <div className="space-y-4 p-6 bg-bg-primary rounded-xl border border-border-main shadow-inner">
       <div className="space-y-2">
         <label className="text-xs font-black text-text-secondary uppercase tracking-widest block text-center">
-          Escribe los centimetros de tu plantilla para una medida más exacta
+          Escribe los centimetros de tu plantilla <span className="text-brand-pink">(OBLIGATORIO)</span>
         </label>
         <div className="flex justify-center items-center gap-3">
           <div className="w-full max-w-[160px]">
@@ -122,7 +119,7 @@ const SizeReference = ({ cm, onChange, currentSize }: { cm: string; onChange: (v
               type="number"
               min="12"
               max="29"
-              step="0.1"
+              step="0.01"
               value={cm}
               onChange={(e) => onChange(e.target.value)}
               placeholder="Ej: 24.5"
@@ -131,9 +128,6 @@ const SizeReference = ({ cm, onChange, currentSize }: { cm: string; onChange: (v
           </div>
           <span className="font-black text-brand-pink text-xl">CM</span>
         </div>
-        <p className="text-[10px] text-center text-text-secondary italic mt-2">
-          Talle sugerido: {formatSize(currentSize)}
-        </p>
       </div>
     </div>
   );
@@ -269,11 +263,6 @@ export default function App() {
 
   const handleCmChange = (cm: string) => {
     setModalCm(cm);
-    const calculatedSize = cmToSize(cm);
-    // Only update if the size is available for this product
-    if (selectedProduct?.sizes.includes(calculatedSize)) {
-      setModalSize(calculatedSize);
-    }
   };
 
   const categories = ['Todos', 'Femenino', 'Masculino', 'Infantil', 'Unisex'];
@@ -551,6 +540,10 @@ export default function App() {
       setNotification({ message: 'Por favor, elige color y talle', type: 'error' });
       return;
     }
+    if (!modalCm || modalCm === '0' || parseFloat(modalCm) <= 0) {
+      setNotification({ message: 'Los centímetros de plantilla son obligatorios', type: 'error' });
+      return;
+    }
     setPromoFirstPair({
       product: selectedProduct,
       color: modalColor,
@@ -586,6 +579,11 @@ export default function App() {
       return;
     }
 
+    if (!modalCm || modalCm === '0' || parseFloat(modalCm) <= 0) {
+      setNotification({ message: 'Los centímetros de plantilla son obligatorios', type: 'error' });
+      return;
+    }
+
     let shippingData = `👤 *Nombre y Apellido:* ${modalFullName}\n`;
     if (isRivera) {
       shippingData += `🏘️ *Barrio:* ${modalNeighborhood}\n🏠 *Dirección:* ${modalAddress}`;
@@ -607,13 +605,13 @@ export default function App() {
 
 1️⃣ *Par 1:* ${promoFirstPair.product.name}
 🎨 *Color:* ${promoFirstPair.color}
-📏 *Talle:* ${promoFirstPair.size} EUR
-📏 *Plantilla:* ${promoFirstPair.cm} cm
+📏 *Numero:* ${promoFirstPair.size} EUR
+📏 *CM plantilla:* ${promoFirstPair.cm}
 
 2️⃣ *Par 2:* ${selectedProduct.name}
 🎨 *Color:* ${modalColor}
-📏 *Talle:* ${modalSize} EUR
-📏 *Plantilla:* ${modalCm} cm
+📏 *Numero:* ${modalSize} EUR
+📏 *CM plantilla:* ${modalCm}
 `;
     } else {
       totalValue = selectedProduct.price || '';
@@ -622,8 +620,8 @@ export default function App() {
 
 📌 *Producto:* ${selectedProduct.name}
 🎨 *Color:* ${modalColor}
-📏 *Talle:* ${modalSize} EUR
-📏 *Plantilla:* ${modalCm} cm
+📏 *Numero:* ${modalSize} EUR
+📏 *CM plantilla:* ${modalCm}
 `;
     }
 
@@ -827,33 +825,10 @@ ${shippingData}
                   ))}
                 </div>
 
-                <div className="flex justify-center pt-2">
-                  <button 
-                    onClick={() => setShowSizeRef(!showSizeRef)}
-                    className={cn(
-                      "w-full py-4 rounded-lg text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95",
-                      showSizeRef 
-                        ? "bg-text-primary text-bg-primary" 
-                        : "bg-brand-pink text-white hover:bg-brand-pink/90 shadow-brand-pink/10"
-                    )}
-                  >
-                    {showSizeRef ? "CERRAR GUÍA" : "ELEGIR TALLE CON CENTIMETROS"}
-                  </button>
+                  <div className="pt-2">
+                    <SizeReference cm={modalCm} onChange={handleCmChange} />
+                  </div>
                 </div>
-                
-                <AnimatePresence>
-                  {showSizeRef && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <SizeReference cm={modalCm} onChange={handleCmChange} currentSize={modalSize} />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
 
               {/* Destination Selection */}
               {(!selectedPromo || promoFirstPair) && (
