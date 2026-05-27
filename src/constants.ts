@@ -2,15 +2,6 @@ export const STORE_NAME = "BELLA";
 
 export const PROMOS = [
   {
-    id: "promo-2600",
-    title: "Promo 2 x $2600",
-    label: "Primera Línea",
-    description: "Lleva 2 pares por solo $2600. (Un par solo: $1500)",
-    price: 2600,
-    individualPrice: 1500,
-    banner: "https://i.imgur.com/uOAlalG.jpeg"
-  },
-  {
     id: "promo-2990",
     title: "Promo 2 x $2990",
     label: "Premium",

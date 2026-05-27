@@ -328,7 +328,7 @@ export default function App() {
   const [newProduct, setNewProduct] = useState({
     name: '',
     category: 'Femenino',
-    promo: 'promo-2600',
+    promo: 'promo-2990',
     price: '',
     image: '', // This will store JSON string of images array
     images: [] as {url: string, color: string}[],
@@ -420,7 +420,7 @@ export default function App() {
     setNewProduct({
       name: '',
       category: 'Femenino',
-      promo: 'promo-2600',
+      promo: 'promo-2990',
       price: '',
       image: '',
       images: [],
