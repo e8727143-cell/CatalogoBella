@@ -528,7 +528,6 @@ export default function App() {
         ...prev,
         images: [...prev.images, { url: optimizedUrl, color: '' }]
       }));
-      setNotification({ message: 'Imagen subida correctamente. Asigna un color abajo.', type: 'success' });
     } catch (error: any) {
       console.error('Error uploading image:', error);
       setNotification({ 
