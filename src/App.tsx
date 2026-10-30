@@ -19,8 +19,6 @@ import {
   Maximize2,
   Check,
   Globe,
-  Sun,
-  Moon,
   Trash2,
   Plus,
   Save,
@@ -32,6 +30,7 @@ import {
 import { cn } from './lib/utils';
 import { 
   STORE_NAME, 
+  ADMIN_EMAIL,
   PROMOS, 
   FAQ_ITEMS, 
   URUGUAY_DEPARTMENTS,
@@ -108,10 +107,13 @@ const UruguayMap = ({ selected, onSelect }: { selected: string; onSelect: (dept:
 
 const SizeReference = ({ cm, onChange }: { cm: string; onChange: (val: string) => void }) => {
   return (
-    <div className="space-y-4 p-6 bg-bg-primary rounded-xl border border-border-main shadow-inner">
+    <div className="relative overflow-hidden space-y-4 p-6 pt-9 bg-bg-primary rounded-xl border border-border-main shadow-inner">
+      <span className="absolute top-0 left-0 bg-brand-pink text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-br-xl">
+        Obligatorio
+      </span>
       <div className="space-y-2">
         <label className="text-xs font-black text-text-secondary uppercase tracking-widest block text-center">
-          Escribe los centimetros de tu plantilla <span className="text-brand-pink">(OBLIGATORIO)</span>
+          Escribe los centimetros de tu plantilla
         </label>
         <div className="flex justify-center items-center gap-3">
           <div className="w-full max-w-[160px]">
@@ -143,8 +145,7 @@ export default function App() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
-  const [adminPassword, setAdminPassword] = useState('');
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);  const [adminPassword, setAdminPassword] = useState('');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -168,18 +169,16 @@ export default function App() {
   const [modalAddress, setModalAddress] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [showSizeRef, setShowSizeRef] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const [promoFirstPair, setPromoFirstPair] = useState<any | null>(null);
   const catalogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) setIsAdminAuthenticated(true);
+    });
+  }, []);
 
   useEffect(() => {
     if (notification) {
@@ -189,6 +188,11 @@ export default function App() {
   }, [notification]);
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     const fetchProducts = async () => {
       try {
         setLoading(true);
@@ -297,16 +301,32 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleAdminLogin = () => {
-    if (adminPassword === 'admin123') {
-      setIsAdminAuthenticated(true);
-      setShowAdminLogin(false);
-      setActiveTab('admin');
-      setAdminPassword('');
-      setNotification({ message: 'Bienvenido, Administrador', type: 'success' });
-    } else {
-      setNotification({ message: 'Contraseña incorrecta', type: 'error' });
+  const handleAdminLogin = async () => {
+    if (!supabase) {
+      setNotification({ message: 'Supabase no está configurado', type: 'error' });
+      return;
     }
+    if (!ADMIN_EMAIL) {
+      setNotification({ message: 'Falta VITE_ADMIN_EMAIL en .env', type: 'error' });
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: ADMIN_EMAIL,
+      password: adminPassword,
+    });
+
+    if (error) {
+      console.error('Admin login failed:', error.message);
+      setNotification({ message: 'Email o contraseña incorrectos', type: 'error' });
+      return;
+    }
+
+    setIsAdminAuthenticated(true);
+    setShowAdminLogin(false);
+    setActiveTab('admin');
+    setAdminPassword('');
+    setNotification({ message: 'Bienvenido, Administrador', type: 'success' });
   };
 
   const handleDeleteProduct = async (id: number) => {
@@ -348,7 +368,7 @@ export default function App() {
       // Extract unique colors from images
       const extractedColors = Array.from(new Set(
         newProduct.images
-          .map(img => img.color.trim())
+          .map(img => (img.color || '').trim())
           .filter(color => color !== '')
       ));
 
@@ -400,6 +420,8 @@ export default function App() {
     } catch (e) {
       parsedImages = [{url: product.image, color: product.colors[0]}];
     }
+    // Filas viejas guardan solo [{"url": "..."}]; el input de color no admite undefined.
+    parsedImages = parsedImages.map((img: any) => ({ ...img, color: img.color || '' }));
 
     setEditingProduct(product);
     setNewProduct({
@@ -449,8 +471,8 @@ export default function App() {
           img.src = event.target?.result as string;
           img.onload = () => {
             const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 1200;
-            const MAX_HEIGHT = 1200;
+            const MAX_WIDTH = 800;
+            const MAX_HEIGHT = 800;
             let width = img.width;
             let height = img.height;
 
@@ -477,43 +499,41 @@ export default function App() {
               } else {
                 reject(new Error('Error al comprimir imagen'));
               }
-            }, 'image/jpeg', 0.8);
+            }, 'image/jpeg', 0.7);
           };
           img.onerror = () => reject(new Error('Error al cargar imagen'));
         };
         reader.onerror = () => reject(new Error('Error al leer archivo'));
       });
 
-      const fileExt = 'jpg';
-      const fileName = `${Date.now()}-${Math.floor(Math.random() * 1000)}.${fileExt}`;
-      const filePath = `${fileName}`;
+      // Subida directa a Cloudinary (preset sin firma)
+      const formData = new FormData();
+      formData.append('file', compressedFile);
+      formData.append('upload_preset', 'bella_catalogo');
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, compressedFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      const response = await fetch('https://api.cloudinary.com/v1_1/nudnxkcm/image/upload', {
+        method: 'POST',
+        body: formData
+      });
 
-      if (uploadError) throw uploadError;
+      const data = await response.json();
 
-      const { data } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
-
-      if (!data || !data.publicUrl) {
-        throw new Error('No se pudo obtener la URL pública de la imagen');
+      if (!response.ok || !data.secure_url) {
+        throw new Error(data?.error?.message || 'Cloudinary rechazó la imagen');
       }
+
+      // f_auto → WebP/AVIF según navegador, q_auto + w_700 recorta el peso
+      const optimizedUrl = String(data.secure_url).replace('/upload/', '/upload/f_auto,q_auto,w_700/');
 
       setNewProduct(prev => ({
         ...prev,
-        images: [...prev.images, { url: data.publicUrl, color: '' }]
+        images: [...prev.images, { url: optimizedUrl, color: '' }]
       }));
       setNotification({ message: 'Imagen subida correctamente. Asigna un color abajo.', type: 'success' });
     } catch (error: any) {
       console.error('Error uploading image:', error);
       setNotification({ 
-        message: `Error al subir: ${error.message || 'Verifica el bucket "product-images"'}`, 
+        message: `Error al subir: ${error.message || 'Revisa el preset "bella_catalogo"'}`, 
         type: 'error' 
       });
     } finally {
@@ -666,13 +686,6 @@ ${shippingData}
                 >
                   <h1 className="text-xl font-bold tracking-tighter text-brand-pink">{STORE_NAME}</h1>
                 </div>
-                <button 
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  className="p-2 rounded-full bg-bg-secondary text-text-primary hover:bg-bg-accent transition-all shadow-sm border border-border-main"
-                  aria-label="Toggle Theme"
-                >
-                  {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
               </div>
             </div>
           </div>
@@ -691,6 +704,7 @@ ${shippingData}
                     src={getProductImage(selectedProduct, modalColor)} 
                     alt={selectedProduct.name}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                     referrerPolicy="no-referrer"
                   />
                 </motion.div>
@@ -1033,6 +1047,7 @@ ${shippingData}
                       src={getProductImage(promoFirstPair.product, promoFirstPair.color)} 
                       alt="" 
                       className="w-16 h-16 object-cover rounded-lg border border-brand-pink/20"
+                      loading="lazy"
                     />
                     <div>
                       <p className="font-bold text-text-primary text-sm">{promoFirstPair.product.name}</p>
@@ -1074,16 +1089,18 @@ ${shippingData}
     );
   }
 
+  const isAdminPanel = activeTab === 'admin' && isAdminAuthenticated;
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-bg-primary/80 backdrop-blur-md border-b border-border-main">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
+          <div className="relative flex justify-between items-center h-16">
+            <div className={cn("flex items-center gap-2", isAdminPanel && "absolute left-1/2 -translate-x-1/2")}>
               <h1 
-                className="text-2xl font-bold tracking-tighter text-brand-pink cursor-pointer hover:opacity-80 transition-opacity"
+                className="text-2xl font-bold tracking-tighter text-brand-pink cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap"
                 onClick={() => {
                   if (isAdminAuthenticated) {
                     setActiveTab('admin');
@@ -1092,7 +1109,12 @@ ${shippingData}
                   }
                 }}
               >
-                {STORE_NAME}
+                {isAdminPanel ? (
+                  <span className="inline-flex items-baseline justify-center gap-2">
+                    <span>{STORE_NAME}</span>
+                    <span className="font-bold uppercase">Administradora</span>
+                  </span>
+                ) : STORE_NAME}
               </h1>
             </div>
             
@@ -1117,21 +1139,29 @@ ${shippingData}
                   Cómo Comprar
                 </button>
               </nav>
-
-              <button 
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className="p-2 rounded-full bg-bg-secondary text-text-primary hover:bg-bg-accent transition-all shadow-sm border border-border-main"
-                aria-label="Toggle Theme"
-              >
-                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
             </div>
           </div>
         </div>
       </header>
 
       <main className="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+        {isAdminPanel && (
+          <div className="max-w-2xl mx-auto mb-4">
+            <button 
+              onClick={async () => {
+                await supabase?.auth.signOut();
+                setIsAdminAuthenticated(false);
+                setActiveTab('catalog');
+              }}
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-full bg-bg-primary border-2 border-border-main shadow-xl shadow-brand-pink/10 text-text-secondary hover:text-brand-pink hover:border-brand-pink text-lg font-black uppercase tracking-widest transition-all"
+            >
+              <LogOut size={20} />
+              Cerrar Sesión
+            </button>
+          </div>
+        )}
         {/* Search Bar Above Promos */}
+        {!isAdminPanel && (
         <div className="mb-8 max-w-2xl mx-auto">
           <div className="relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary group-focus-within:text-brand-pink transition-colors" size={20} />
@@ -1141,18 +1171,23 @@ ${shippingData}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
+                setSelectedCategory('Todos');
                 setActiveTab('catalog');
               }}
               className="w-full pl-12 pr-6 py-4 rounded-full bg-bg-primary border-2 border-border-main shadow-xl shadow-brand-pink/10 focus:outline-none focus:border-brand-pink text-lg transition-all placeholder:text-text-secondary/50 text-text-primary"
             />
           </div>
         </div>
+        )}
 
         {/* Hero / Promos */}
+        {!isAdminPanel && (
         <section className="mb-12">
           <div className="text-center mb-6">
             <p className="text-sm sm:text-lg font-black text-brand-pink uppercase tracking-tighter leading-tight">
-              Haz clic en la imagen y selecciona tu combo favorito.
+              Haz clic en la imagen y selecciona
+              <br />
+              tu combo favorito.
             </p>
           </div>
           <div className="grid grid-cols-1 gap-8">
@@ -1197,6 +1232,7 @@ ${shippingData}
             })}
           </div>
         </section>
+        )}
 
         <AnimatePresence mode="wait">
           {activeTab === 'catalog' && (
@@ -1209,33 +1245,78 @@ ${shippingData}
               className="space-y-8"
             >
               {/* Filters */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-start items-center bg-bg-primary p-4 rounded-lg border border-border-main shadow-sm">
-                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                  {categories.map((cat) => (
+              {!searchQuery && (
+              <div className="space-y-2">
+                {categories.map((cat) => {
+                  const active = selectedCategory === cat;
+                  const look = {
+                    Todos: {
+                      bar: "bg-gradient-to-r from-brand-pink/35 via-brand-pink/12 to-transparent border-brand-pink/60",
+                      stripe: "bg-brand-pink",
+                      halo: "bg-brand-pink/40",
+                    },
+                    Femenino: {
+                      bar: "bg-white border-rose-200",
+                      stripe: "bg-rose-400",
+                      halo: "bg-rose-200/70",
+                    },
+                    Masculino: {
+                      bar: "bg-gradient-to-r from-brand-beige to-[#FBFBF0] border-[#E0D6AE]",
+                      stripe: "bg-[#C9B96A]",
+                      halo: "bg-[#E8DFB8]/80",
+                    },
+                    Infantil: {
+                      bar: "bg-gradient-to-r from-amber-100 to-amber-50 border-amber-300 border-dashed",
+                      stripe: "bg-amber-400",
+                      halo: "bg-amber-200/80",
+                    },
+                    Unisex: {
+                      bar: "bg-gradient-to-r from-[#FFE7EE] to-white border-brand-pink/40",
+                      stripe: "bg-brand-pink/80",
+                      halo: "bg-brand-pink/30",
+                    },
+                  }[cat] ?? { bar: "bg-bg-secondary border-border-main", stripe: "bg-brand-pink", halo: "bg-transparent" };
+
+                  return (
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
                       className={cn(
-                        "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
-                        selectedCategory === cat 
-                          ? "bg-brand-pink text-white border-brand-pink border" 
-                          : "bg-bg-secondary text-text-secondary border-transparent border hover:bg-bg-accent"
+                        "group relative w-full flex items-center justify-center px-4 py-2.5 rounded-xl border overflow-hidden text-center transition-all hover:shadow-md hover:-translate-y-px shadow-sm",
+                        look.bar
                       )}
                     >
-                      {cat}
+                      <span className={cn("absolute inset-y-0 left-0 w-1.5", look.stripe)} />
+                      <span className={cn("absolute -right-8 -top-10 w-28 h-28 rounded-full blur-2xl opacity-70 transition-opacity group-hover:opacity-100", look.halo)} />
+                      {active && (
+                        <motion.span
+                          layoutId="category-frame"
+                          className="absolute inset-0 rounded-xl border-2 border-brand-pink shadow-[0_0_0_4px_rgba(255,182,193,0.18)]"
+                          transition={{ type: "spring", stiffness: 520, damping: 42 }}
+                        />
+                      )}
+                      <span className={cn(
+                        "relative text-xs font-black uppercase tracking-widest transition-colors",
+                        active ? "text-text-primary" : "text-text-primary/75 group-hover:text-text-primary"
+                      )}>
+                        {cat}
+                      </span>
                     </button>
-                  ))}
-                  {selectedPromo && (
-                    <button
-                      onClick={() => setSelectedPromo(null)}
-                      className="px-4 py-2 rounded-full text-sm font-black bg-brand-pink text-white flex items-center gap-2 shadow-md hover:bg-brand-pink/80 transition-all"
-                    >
-                      <span>Promo: {PROMOS.find(p => p.id === selectedPromo)?.label}</span>
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
+                  );
+                })}
+                {selectedPromo && (
+                  <button
+                    onClick={() => setSelectedPromo(null)}
+                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border-2 border-dashed border-brand-pink/40 text-brand-pink hover:bg-brand-pink/5 transition-colors"
+                  >
+                    <span className="text-xs font-black uppercase tracking-widest">
+                      Promo: {PROMOS.find(p => p.id === selectedPromo)?.label}
+                    </span>
+                    <X size={14} />
+                  </button>
+                )}
               </div>
+              )}
 
               {/* Product Grid */}
               {loading ? (
@@ -1244,17 +1325,31 @@ ${shippingData}
                   <p className="text-text-secondary font-bold uppercase tracking-widest text-xs">Cargando catálogo...</p>
                 </div>
               ) : filteredProducts.length > 0 ? (
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
+                <div className={cn(
+                  "grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8 rounded-2xl transition-colors duration-500",
+                  selectedPromo && "bg-[radial-gradient(circle_at_50%_0%,rgba(212,175,55,0.10),transparent_65%)] p-2 sm:p-3"
+                )}>
                   {filteredProducts.map((product) => {
                     const promoLabel = PROMOS.find(p => p.id === product.promo)?.label;
                     const isPremium = promoLabel === 'Premium';
                     
                     return (
                       <motion.div
-                        layout
-                        key={product.id}
-                        className="group bg-bg-primary rounded-xl overflow-hidden border border-border-main shadow-sm hover:shadow-xl transition-all duration-300"
+                        key={`${selectedCategory}-${product.id}`}
+                        initial={{ rotateY: 180 }}
+                        animate={{ rotateY: 0 }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        style={{ transformPerspective: 900, transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
+                        className={cn(
+                          "group relative bg-bg-primary rounded-xl overflow-hidden border transition-shadow duration-300",
+                          selectedPromo
+                            ? "border-[#D4AF37]/60 shadow-[0_0_18px_rgba(212,175,55,0.28)] hover:shadow-[0_0_30px_rgba(212,175,55,0.5)]"
+                            : "border-border-main shadow-sm hover:shadow-xl"
+                        )}
                       >
+                        {selectedPromo && (
+                          <span className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(ellipse_at_top,rgba(255,215,120,0.22),transparent_65%)]" />
+                        )}
                         <div className="aspect-square overflow-hidden relative">
                           <img 
                             src={(() => {
@@ -1267,6 +1362,7 @@ ${shippingData}
                             })()} 
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            loading="lazy"
                             referrerPolicy="no-referrer"
                           />
                         </div>
@@ -1435,7 +1531,7 @@ ${shippingData}
             </motion.div>
           )}
 
-          {activeTab === 'admin' && isAdminAuthenticated && (
+          {isAdminPanel && (
             <motion.div
               key="admin"
               initial={{ opacity: 0, y: 20 }}
@@ -1443,20 +1539,6 @@ ${shippingData}
               exit={{ opacity: 0, y: -20 }}
               className="space-y-12"
             >
-              <div className="flex justify-between items-center">
-                <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter">Panel de Administración</h2>
-                <button 
-                  onClick={() => {
-                    setIsAdminAuthenticated(false);
-                    setActiveTab('catalog');
-                  }}
-                  className="flex items-center gap-2 text-text-secondary hover:text-brand-pink transition-colors font-bold uppercase text-xs tracking-widest"
-                >
-                  <LogOut size={16} />
-                  Cerrar Sesión
-                </button>
-              </div>
-
               {/* Add/Edit Product Form */}
               <div className="bg-bg-primary p-6 sm:p-8 rounded-2xl border border-border-main shadow-xl space-y-6">
                 <div className="flex justify-between items-center">
@@ -1491,7 +1573,7 @@ ${shippingData}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       {newProduct.images.map((img, idx) => (
                         <div key={idx} className="relative group bg-bg-secondary rounded-xl border border-border-main p-2 space-y-2">
-                          <img src={img.url} alt="" className="w-full aspect-square object-cover rounded-lg" />
+                          <img src={img.url} alt="" loading="lazy" className="w-full aspect-square object-cover rounded-lg" />
                           <input 
                             type="text"
                             placeholder="Color"
@@ -1611,7 +1693,7 @@ ${shippingData}
                 <div className="grid grid-cols-1 gap-4">
                   {products.map(product => (
                     <div key={product.id} className="bg-bg-primary p-4 rounded-xl border border-border-main flex items-center gap-4 shadow-sm hover:border-brand-pink/30 transition-colors">
-                      <img src={product.image} alt="" className="w-16 h-16 object-cover rounded-lg" referrerPolicy="no-referrer" />
+                      <img src={getProductImage(product, product.colors?.[0])} alt="" loading="lazy" className="w-16 h-16 object-cover rounded-lg" referrerPolicy="no-referrer" />
                       <div className="flex-grow">
                         <h4 className="font-bold text-text-primary text-sm sm:text-base">
                           <span>{product.name}</span>
@@ -1713,6 +1795,8 @@ ${shippingData}
       <footer className="bg-bg-primary border-t border-border-main py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
           <div className="max-w-2xl mx-auto space-y-4">
+            {!isAdminPanel && (
+            <>
             <div className="bg-brand-pink/5 border border-brand-pink/20 p-6 rounded-2xl">
               <p className="text-brand-pink font-black text-sm sm:text-base">
                 Atención: No se procesan cambios, por favor verifique su talla con exactitud antes de realizar su pedido.
@@ -1721,6 +1805,8 @@ ${shippingData}
             <p className="text-text-primary font-bold text-sm sm:text-base">
               Formas de pago: Transferencia bancaria, depósitos, y Mercado Pago hasta 12 cuotas.
             </p>
+            </>
+            )}
           </div>
           <div className="text-[10px] text-text-secondary uppercase tracking-widest pt-4 border-t border-border-main/50">
             BELLA URUGUAY

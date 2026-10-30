@@ -1,27 +1,49 @@
--- Create products table
-CREATE TABLE products (
-  id BIGSERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  category TEXT NOT NULL,
-  promo TEXT NOT NULL,
-  image TEXT NOT NULL,
-  colors TEXT[] NOT NULL,
-  sizes TEXT[] NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+-- Esquema para proyecto Supabase nuevo (Bella).
+-- Ejecutar en el SQL Editor del proyecto nuevo, de una sola vez.
+-- Las fotos ya no viven en Storage: Cloudinary entrega las URLs.
+
+create table public.products (
+  id bigserial primary key,
+  name text not null,
+  category text not null,
+  promo text not null,
+  price text default '',
+  image text not null,
+  colors text[] not null default '{}',
+  sizes text[] not null default '{}',
+  created_at timestamptz not null default now()
 );
 
--- Enable Row Level Security
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+alter table public.products enable row level security;
 
--- Create policy to allow anyone to read products
-CREATE POLICY "Allow public read access" ON products
-  FOR SELECT USING (true);
+-- Catálogo público, escritura solo con sesión autenticada (admin).
+create policy "products public read"
+  on public.products for select
+  using (true);
 
--- Insert initial data
-INSERT INTO products (name, category, promo, image, colors, sizes) VALUES
-('Sneaker Urban White', 'Femenino', 'promo-2600', 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=800', ARRAY['Blanco', 'Beige', 'Rosa'], ARRAY['36', '37', '38', '39', '40']),
-('Sport Runner Black', 'Masculino', 'promo-2990', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800', ARRAY['Negro', 'Gris Oscuro', 'Blanco'], ARRAY['40', '41', '42', '43', '44', '45']),
-('Kids Play Pink', 'Infantil', 'promo-2600', 'https://images.unsplash.com/photo-1514989940723-e8e51635b782?auto=format&fit=crop&q=80&w=800', ARRAY['Rosa', 'Blanco', 'Beige'], ARRAY['28', '29', '30', '31', '32', '33', '34', '35']),
-('Classic Leather Brown', 'Masculino', 'promo-2990', 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&q=80&w=800', ARRAY['Beige Oscuro', 'Negro', 'Blanco'], ARRAY['40', '41', '42', '43', '44', '45']),
-('Vibrant Sky Blue', 'Femenino', 'promo-2600', 'https://images.unsplash.com/photo-1560769629-975ec94e6a86?auto=format&fit=crop&q=80&w=800', ARRAY['Rosa Pastel', 'Blanco', 'Beige'], ARRAY['36', '37', '38', '39', '40']),
-('Junior Speed', 'Infantil', 'promo-2990', 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&q=80&w=800', ARRAY['Negro', 'Blanco', 'Rosa'], ARRAY['28', '29', '30', '31', '32', '33', '34', '35']);
+create policy "products admin insert"
+  on public.products for insert
+  to authenticated
+  with check (true);
+
+create policy "products admin update"
+  on public.products for update
+  to authenticated
+  using (true)
+  with check (true);
+
+create policy "products admin delete"
+  on public.products for delete
+  to authenticated
+  using (true);
+
+-- "Automatically expose new tables" va OFF: los grants van explícitos.
+grant usage on schema public to anon, authenticated;
+grant select on public.products to anon, authenticated;
+grant insert, update, delete on public.products to authenticated;
+grant usage, select on sequence public.products_id_seq to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- La app escucha cambios en vivo desde el panel.
+alter publication supabase_realtime add table public.products;

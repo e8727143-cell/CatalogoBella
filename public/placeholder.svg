@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="700" viewBox="0 0 700 700">
+  <rect width="700" height="700" fill="#FDF5F5"/>
+  <g fill="none" stroke="#FFB6C1" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="200" y="230" width="300" height="240" rx="28"/>
+    <circle cx="350" cy="330" r="62"/>
+    <path d="M250 470l60-70 45 45 55-65 70 90"/>
+  </g>
+  <text x="350" y="560" font-family="Outfit, sans-serif" font-size="28" font-weight="700" fill="#B5899A" text-anchor="middle" letter-spacing="4">FOTO PENDIENTE</text>
+</svg>
