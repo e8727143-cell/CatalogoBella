@@ -150,6 +150,7 @@ export default function App() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [sizeRange, setSizeRange] = useState({ from: '', to: '' });
+  const destinoRef = useRef<HTMLDivElement>(null);
 
   // Modal State
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -805,7 +806,7 @@ ${shippingData}
               {/* Destination Selection */}
               {(!selectedPromo || promoFirstPair) && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div ref={destinoRef} className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
                       <MapPin size={14} />
                       <span>Destino del Envío</span>
@@ -846,6 +847,8 @@ ${shippingData}
                           onSelect={(dept) => {
                             setModalDept(dept);
                             setShowMap(false);
+                            // El mapa colapsa y la página sube: devolvemos la vista al encabezado de destino.
+                            setTimeout(() => destinoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
                           }} 
                         />
                       </motion.div>
