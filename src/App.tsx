@@ -808,13 +808,16 @@ ${shippingData}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
                       <MapPin size={14} />
-                      <span>Destino del Envío (Uruguay)</span>
+                      <span>Destino del Envío</span>
+                      <ArrowRight size={14} className="text-brand-pink ml-1" strokeWidth={3} />
                     </div>
                     <button 
                       onClick={() => setShowMap(!showMap)}
-                      className="bg-bg-secondary text-text-secondary px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-pink hover:text-white transition-all border border-border-main"
+                      className="bg-brand-pink text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-brand-pink/25 flex flex-col items-stretch justify-center leading-tight min-w-[7.5rem]"
                     >
-                      {showMap ? "Cerrar Mapa" : "Elegir Departamento"}
+                      {showMap
+                        ? <><span className="block w-full text-center">Mapa</span><span className="block w-full text-center">Cerrar</span></>
+                        : <><span className="block w-full text-center">Elegir</span><span className="block w-full text-center">Departamento</span></>}
                     </button>
                   </div>
                   
