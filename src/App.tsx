@@ -326,7 +326,6 @@ export default function App() {
     setShowAdminLogin(false);
     setActiveTab('admin');
     setAdminPassword('');
-    setNotification({ message: 'Bienvenido, Administrador', type: 'success' });
   };
 
   const handleDeleteProduct = async (id: number) => {
