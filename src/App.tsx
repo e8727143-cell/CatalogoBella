@@ -17,8 +17,6 @@ import {
   Ruler,
   Palette,
   Maximize2,
-  Check,
-  Globe,
   Trash2,
   Plus,
   Save,
@@ -698,10 +696,15 @@ ${shippingData}
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Image Section */}
             <div className="lg:w-1/2 space-y-4">
+              <div className="flex justify-center">
+                <div className="inline-block bg-text-primary text-bg-primary px-4 py-1 rounded-full text-sm font-black uppercase tracking-widest shadow-lg">
+                  <span>Stock Disponible</span>
+                </div>
+              </div>
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="aspect-square rounded-[1.5rem] overflow-hidden shadow-2xl border border-border-main"
+                  className="aspect-square rounded-[1.5rem] overflow-hidden shadow-2xl border border-border-main bg-brand-pink/15"
                 >
                   <img 
                     src={getProductImage(selectedProduct, modalColor)} 
@@ -733,61 +736,12 @@ ${shippingData}
                       <span>{PROMOS.find(p => p.id === selectedProduct.promo)?.title}</span>
                     </div>
                   )}
-                  <div className="inline-block bg-text-primary text-bg-primary px-4 py-1 rounded-full text-sm font-black uppercase tracking-widest shadow-lg">
-                    <span>Stock Disponible</span>
-                  </div>
                 </div>
                 {selectedProduct.price && !selectedPromo && (
                   <div className="mt-4">
                     <span className="text-3xl font-black text-brand-pink">${selectedProduct.price}</span>
                   </div>
                 )}
-              </div>
-
-              {/* Product Info Card */}
-              <div className="p-8 bg-bg-secondary rounded-[1.25rem] border border-border-main space-y-6">
-                <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
-                  <Info size={14} />
-                  <span>Especificaciones</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-bg-primary rounded-xl flex items-center justify-center text-brand-pink shadow-sm">
-                      <Check size={16} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Calidad</p>
-                      <p className="text-sm font-bold text-text-primary">Premium / 1ra Línea</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-bg-primary rounded-xl flex items-center justify-center text-brand-pink shadow-sm">
-                      <Globe size={16} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Origen</p>
-                      <p className="text-sm font-bold text-text-primary">Brasil</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-bg-primary rounded-xl flex items-center justify-center text-brand-pink shadow-sm">
-                      <Maximize2 size={16} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Numeración</p>
-                      <p className="text-sm font-bold text-text-primary">36 al 45 (EU)</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-bg-primary rounded-xl flex items-center justify-center text-brand-pink shadow-sm">
-                      <Truck size={16} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Envíos</p>
-                      <p className="text-sm font-bold text-text-primary">Todo Uruguay</p>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Color Selection */}
@@ -1353,7 +1307,7 @@ ${shippingData}
                         {selectedPromo && (
                           <span className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(ellipse_at_top,rgba(255,215,120,0.22),transparent_65%)]" />
                         )}
-                        <div className="aspect-square overflow-hidden relative">
+                        <div className="aspect-square overflow-hidden relative bg-brand-pink/15">
                           <img 
                             src={(() => {
                               try {
