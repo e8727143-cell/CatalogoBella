@@ -1774,16 +1774,18 @@ ${shippingData}
         {notification && (
           <motion.div
             key="notification-toast"
-            initial={{ opacity: 0, y: 50 }}
+            initial={{ opacity: 0, y: -40 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
+            exit={{ opacity: 0, y: -40 }}
             className={cn(
-              "fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 rounded-full shadow-2xl font-bold text-sm uppercase tracking-widest flex items-center gap-3",
-              notification.type === 'success' ? "bg-green-500 text-white" : "bg-red-500 text-white"
+              "fixed top-0 left-0 right-0 z-[200] px-4 py-3 shadow-lg font-black text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2 whitespace-nowrap overflow-hidden text-ellipsis",
+              notification.type === 'success' ? "bg-brand-pink text-white" : "bg-red-500 text-white"
             )}
           >
-            {notification.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-            <span>{notification.message}</span>
+            {notification.type === 'success'
+              ? <CheckCircle2 size={18} className="shrink-0 text-green-400 drop-shadow" strokeWidth={3} />
+              : <AlertCircle size={18} className="shrink-0" />}
+            <span className="truncate">{notification.message}</span>
           </motion.div>
         )}
       </AnimatePresence>
