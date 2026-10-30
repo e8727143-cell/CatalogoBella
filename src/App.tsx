@@ -150,7 +150,6 @@ export default function App() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [sizeRange, setSizeRange] = useState({ from: '', to: '' });
-  const destinoRef = useRef<HTMLDivElement>(null);
 
   // Modal State
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -806,7 +805,8 @@ ${shippingData}
               {/* Destination Selection */}
               {(!selectedPromo || promoFirstPair) && (
                 <div className="space-y-4">
-                  <div ref={destinoRef} className="flex flex-wrap items-center justify-between gap-3">
+                  {(!modalDept || showMap) && (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
                       <MapPin size={14} />
                       <span>Destino del Envío</span>
@@ -821,6 +821,7 @@ ${shippingData}
                         : <><span className="block w-full text-center">Elegir</span><span className="block w-full text-center">Departamento</span></>}
                     </button>
                   </div>
+                  )}
                   
                   {modalDept && !showMap && (
                     <div className="p-5 bg-bg-secondary rounded-[1rem] border-2 border-brand-pink/20 flex items-center justify-between shadow-sm">
@@ -847,8 +848,6 @@ ${shippingData}
                           onSelect={(dept) => {
                             setModalDept(dept);
                             setShowMap(false);
-                            // El mapa colapsa y la página sube: devolvemos la vista al encabezado de destino.
-                            setTimeout(() => destinoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
                           }} 
                         />
                       </motion.div>
