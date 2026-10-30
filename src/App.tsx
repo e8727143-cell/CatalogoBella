@@ -738,8 +738,9 @@ ${shippingData}
                   )}
                 </div>
                 {selectedProduct.price && !selectedPromo && (
-                  <div className="mt-4">
-                    <span className="text-3xl font-black text-brand-pink">${selectedProduct.price}</span>
+                  <div className="mt-4 flex items-center justify-between gap-4 px-5 py-3 rounded-xl bg-[#F2E4DC] border border-[#E8D2C6]">
+                    <span className="text-xs font-black uppercase tracking-widest text-brand-pink">Precio</span>
+                    <span className="text-2xl font-black text-emerald-600">${selectedProduct.price}</span>
                   </div>
                 )}
               </div>
