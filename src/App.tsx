@@ -151,6 +151,7 @@ export default function App() {
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [sizeRange, setSizeRange] = useState({ from: '', to: '' });
 
   // Modal State
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -432,6 +433,9 @@ export default function App() {
       images: parsedImages,
       sizes: product.sizes.join(', ')
     });
+    // El rango se precarga con el talle más chico y el más grande del producto.
+    const nums = product.sizes.map((s: string) => parseInt(s, 10)).filter((n: number) => Number.isFinite(n));
+    if (nums.length > 0) setSizeRange({ from: String(Math.min(...nums)), to: String(Math.max(...nums)) });
     // Scroll to form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -447,6 +451,7 @@ export default function App() {
       images: [],
       sizes: '36,37,38,39,40'
     });
+    setSizeRange({ from: '36', to: '40' });
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1649,15 +1654,54 @@ ${shippingData}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Talles (separados por coma)</label>
-                    <input 
-                      required
-                      type="text" 
-                      value={newProduct.sizes}
-                      onChange={e => setNewProduct({...newProduct, sizes: e.target.value})}
-                      placeholder="36, 37, 38, 39, 40"
-                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
-                    />
+                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Talles</label>
+                    {(() => {
+                      const from = parseInt(sizeRange.from, 10);
+                      const to = parseInt(sizeRange.to, 10);
+                      const list = Number.isFinite(from) && Number.isFinite(to) && to >= from && to - from <= 30
+                        ? Array.from({ length: to - from + 1 }, (_, i) => String(from + i))
+                        : [];
+                      const guardados = String(newProduct.sizes || '').split(',').map(s => s.trim()).filter(Boolean);
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-dashed border-brand-pink/50 bg-brand-pink/5">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-brand-pink">Del</span>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={sizeRange.from}
+                              onChange={e => setSizeRange({ ...sizeRange, from: e.target.value })}
+                              placeholder="34"
+                              className="w-16 p-2 text-center rounded-lg bg-white border border-border-main focus:border-brand-pink outline-none text-sm font-bold"
+                            />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-brand-pink">al</span>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={sizeRange.to}
+                              onChange={e => setSizeRange({ ...sizeRange, to: e.target.value })}
+                              placeholder="40"
+                              className="w-16 p-2 text-center rounded-lg bg-white border border-border-main focus:border-brand-pink outline-none text-sm font-bold"
+                            />
+                            <button
+                              type="button"
+                              disabled={list.length === 0}
+                              onClick={() => setNewProduct({ ...newProduct, sizes: list.join(', ') })}
+                              className="ml-auto px-3 py-2 rounded-lg bg-brand-pink text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+                            >
+                              Aplicar
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {guardados.length > 0 ? guardados.map((s, i) => (
+                              <span key={`${s}-${i}`} className="px-3 py-1.5 rounded-lg bg-bg-secondary border border-border-main text-xs font-black text-text-primary tabular-nums">{s}</span>
+                            )) : (
+                              <span className="text-xs font-semibold text-text-secondary/70">Elegí el rango y tocá Aplicar.</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="md:col-span-2">
                     <button 
