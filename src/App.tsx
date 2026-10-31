@@ -38,6 +38,9 @@ import {
 } from './constants';
 import { supabase } from './lib/supabase';
 
+// /mayorista abre el mismo catálogo con la lista de precios mayorista
+const IS_WHOLESALE = /\/mayorista\/?$/i.test(window.location.pathname);
+
 // --- Components ---
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
@@ -382,8 +385,17 @@ export default function App() {
     };
   }, []);
 
-  const cmToSize = (cmStr: string) => {
-    const cm = parseFloat(cmStr);
+  // La vista mayorista no se indexa: evita mezclar precios en Google
+  useEffect(() => {
+    if (!IS_WHOLESALE) return;
+    document.title = 'BELLA · Mayorista';
+    const meta = document.createElement('meta');
+    meta.name = 'robots';
+    meta.content = 'noindex,follow';
+    document.head.appendChild(meta);
+  }, []);
+
+  const cmToSize = (cmStr: string) => {    const cm = parseFloat(cmStr);
     if (isNaN(cm)) return '36';
     // Kids range (approximate)
     if (cm < 13.0) return '20';
@@ -501,6 +513,7 @@ export default function App() {
     category: 'Femenino',
     promo: 'promo-2990',
     price: '',
+    price_wholesale: '',
     image: '', // This will store JSON string of images array
     images: [] as {url: string, color: string}[],
     sizes: '36,37,38,39,40'
@@ -529,7 +542,7 @@ export default function App() {
         return;
       }
 
-      const productData = {
+      const productData: any = {
         name: newProduct.name,
         category: newProduct.category,
         promo: newProduct.promo,
@@ -538,6 +551,8 @@ export default function App() {
         colors: extractedColors,
         sizes: typeof newProduct.sizes === 'string' ? newProduct.sizes.split(',').map(s => s.trim()) : newProduct.sizes
       };
+      // Solo se envía si hay valor: así el admin sigue guardando aunque la columna no exista todavía
+      if (newProduct.price_wholesale) productData.price_wholesale = newProduct.price_wholesale;
 
       if (editingProduct) {
         const { error } = await supabase
@@ -580,6 +595,7 @@ export default function App() {
       category: product.category,
       promo: product.promo,
       price: product.price || '',
+      price_wholesale: product.price_wholesale || '',
       image: product.image,
       images: parsedImages,
       sizes: product.sizes.join(', ')
@@ -598,6 +614,7 @@ export default function App() {
       category: 'Femenino',
       promo: 'promo-2990',
       price: '',
+      price_wholesale: '',
       image: '',
       images: [],
       sizes: '36,37,38,39,40'
@@ -739,6 +756,13 @@ export default function App() {
   const getShareImage = (product: any, color: string) =>
     getProductImage(product, color).replace('/f_auto,', '/f_jpg,');
 
+  // Precio según la lista que se está viendo: minorista en /, mayorista en /mayorista
+  // El mayorista se guarda como "1450/1290/1245": 1-10, 11-20 y 21-30 pares
+  const wholesaleTiers = (p: any) =>
+    String(p?.price_wholesale || '').split('/').map((s: string) => s.trim()).filter(Boolean);
+  const priceOf = (p: any) =>
+    IS_WHOLESALE ? (wholesaleTiers(p)[0] || '') : (p?.price || '');
+
   const handleNextPair = () => {
     if (!modalColor || !modalSize) {
       setNotification({ message: 'Por favor, elige color y talle', type: 'error' });
@@ -795,7 +819,7 @@ export default function App() {
 📏 *CM plantilla:* ${val(modalCm)}
 `;
     } else {
-      totalValue = selectedProduct.price || '';
+      totalValue = priceOf(selectedProduct);
       productDetails = `
 🔗 *Link:* ${getShareImage(selectedProduct, modalColor)}
 
@@ -803,10 +827,13 @@ export default function App() {
 🎨 *Color:* ${val(modalColor)}
 📏 *Numero:* ${val(modalSize)} BR
 📏 *CM plantilla:* ${val(modalCm)}
+${IS_WHOLESALE && wholesaleTiers(selectedProduct).length > 1
+  ? `💰 *Escala por cantidad:* ${wholesaleTiers(selectedProduct).map((v: string, i: number) => `${['1-10', '11-20', '21-30'][i]} $${v}`).join(' · ')}`
+  : ''}
 `;
     }
 
-    return `¡Hola BELLA! Quiero realizar este pedido:
+    return `${IS_WHOLESALE ? '¡Hola BELLA! Quiero un pedido mayorista:' : '¡Hola BELLA! Quiero realizar este pedido:'}
 ${productDetails}
 📍 *Destino:* ${val(modalDept)}
 ${isRivera ? '' : `🚚 *Agencia:* ${val(modalAgency)}\n`}
@@ -815,7 +842,7 @@ ${shippingData}
 
 💳 *Método de Pago:* ${val(modalPayment)}
 
-💰 *Valor total a pagar:* $${totalValue}
+💰 *${IS_WHOLESALE ? 'Precio unitario' : 'Valor total a pagar'}:* $${totalValue}
 
 ¿Cómo procedo con el pago?`;
   }, [
@@ -991,7 +1018,7 @@ ${shippingData}
             <div className="lg:w-1/2 space-y-10">
               <div>
                 <div className="flex flex-wrap gap-2">
-                  {selectedPromo && (
+                  {selectedPromo && !IS_WHOLESALE && (
                     <div className="inline-block bg-brand-pink text-white px-4 py-1 rounded-full text-sm font-black uppercase tracking-widest shadow-lg shadow-brand-pink/10">
                       <span>{PROMOS.find(p => p.id === selectedProduct.promo)?.title}</span>
                     </div>
@@ -1003,10 +1030,24 @@ ${shippingData}
                     {modalColor?.trim() || gallery[slide]?.color?.trim() || 'Elegí una foto'}
                   </span>
                 </div>
-                {selectedProduct.price && !selectedPromo && (
+                {!selectedPromo && (priceOf(selectedProduct) || IS_WHOLESALE) && (
                   <div className="mt-8 flex items-center justify-between gap-4 px-5 py-3 rounded-xl bg-[#F2E4DC] border border-[#E8D2C6]">
-                    <span className="text-xs font-black uppercase tracking-widest text-brand-pink">Precio</span>
-                    <span className="text-2xl font-black text-emerald-600">${selectedProduct.price}</span>
+                    <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
+                      {IS_WHOLESALE ? 'Precio mayorista' : 'Precio'}
+                    </span>
+                    <span className="text-2xl font-black text-emerald-600">
+                      {priceOf(selectedProduct) ? `${IS_WHOLESALE ? 'desde ' : ''}$${priceOf(selectedProduct)}` : 'Consultar'}
+                    </span>
+                  </div>
+                )}
+                {IS_WHOLESALE && !selectedPromo && wholesaleTiers(selectedProduct).length > 1 && (
+                  <div className="mt-3 space-y-1 rounded-xl bg-[#F2E4DC]/60 border border-[#E8D2C6] px-5 py-3">
+                    {['1 a 10 pares', '11 a 20 pares', '21 a 30 pares'].slice(0, wholesaleTiers(selectedProduct).length).map((tramo, i) => (
+                      <div key={tramo} className="flex items-center justify-between gap-3">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{tramo}</span>
+                        <span className="text-sm font-black text-text-primary">${wholesaleTiers(selectedProduct)[i]} c/u</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1451,6 +1492,18 @@ ${shippingData}
             </button>
           </div>
         )}
+        {/* Precios mayoristas */}
+        {IS_WHOLESALE && !isAdminPanel && (
+          <section className="mb-8 rounded-2xl border-2 border-brand-pink/40 bg-brand-pink/10 p-5 sm:p-6 text-center space-y-3">
+            <p className="text-brand-pink font-black uppercase tracking-[0.25em] text-xs">Catálogo mayorista</p>
+            <p className="text-text-primary text-sm sm:text-base font-bold leading-relaxed">
+              1. En la primera compra, el mínimo es de 3 pares para acceder a precios especiales.
+              <br />
+              2. A partir de la segunda compra, podés llevar desde 1 par.
+            </p>
+          </section>
+        )}
+
         {/* Search Bar Above Promos */}
         {!isAdminPanel && (
         <div className="mb-8 max-w-2xl mx-auto">
@@ -1472,7 +1525,7 @@ ${shippingData}
         )}
 
         {/* Hero / Promos */}
-        {!isAdminPanel && (
+        {!isAdminPanel && !IS_WHOLESALE && (
         <section className="mb-12">
           <div className="text-center mb-6">
             <p className="text-sm sm:text-lg font-black text-brand-pink uppercase tracking-tighter leading-tight">
@@ -1669,6 +1722,7 @@ ${shippingData}
                         </div>
                         
                         {/* Category Bar */}
+                        {!IS_WHOLESALE && (
                         <div className={cn(
                           "py-1 px-4 text-center text-[10px] font-black uppercase tracking-[0.2em] text-white",
                           isPremium 
@@ -1677,13 +1731,16 @@ ${shippingData}
                         )}>
                           {promoLabel}
                         </div>
+                        )}
 
                         <div className="p-4 sm:p-6">
                           <p className="text-[10px] font-bold text-brand-pink uppercase tracking-widest mb-1">{product.category}</p>
                           <div className="mb-4">
                             <h3 className="text-base sm:text-lg font-bold text-text-primary leading-tight mb-1">{product.name}</h3>
-                            {product.price && (
-                              <div className="text-brand-pink font-black text-xl">${product.price}</div>
+                            {(priceOf(product) || IS_WHOLESALE) && (
+                              <div className="text-brand-pink font-black text-xl">
+                                {priceOf(product) ? `${IS_WHOLESALE ? 'desde ' : ''}$${priceOf(product)}` : 'Consultar'}
+                              </div>
                             )}
                           </div>
                           <button 
@@ -1969,6 +2026,16 @@ ${shippingData}
                       value={newProduct.price}
                       onChange={e => setNewProduct({...newProduct, price: e.target.value})}
                       placeholder="Ej: 1500"
+                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Precio Mayorista (1-10 / 11-20 / 21-30)</label>
+                    <input 
+                      type="text" 
+                      value={newProduct.price_wholesale}
+                      onChange={e => setNewProduct({...newProduct, price_wholesale: e.target.value})}
+                      placeholder="Ej: 1450/1290/1245"
                       className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
                     />
                   </div>
