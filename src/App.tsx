@@ -25,6 +25,7 @@ import {
   User,
   ArrowRight,
   ChevronLeft,
+  ChevronRight,
   ZoomIn
 } from 'lucide-react';
 import { cn } from './lib/utils';
@@ -156,6 +157,9 @@ export default function App() {
   // Modal State
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [modalColor, setModalColor] = useState('');
+  const [slide, setSlide] = useState(0);
+  const pointerStartX = useRef(0);
+  const swipedAt = useRef(0);
   const [modalSize, setModalSize] = useState('');
   const [modalDept, setModalDept] = useState('');
   const [modalAgency, setModalAgency] = useState('');
@@ -300,6 +304,7 @@ export default function App() {
   const openProductModal = (product: any) => {
     setSelectedProduct(product);
     setModalColor(product.colors[0]);
+    setSlide(0);
     setModalSize(product.sizes[0]);
     setModalDept('');
     setModalAgency('');
@@ -567,12 +572,30 @@ export default function App() {
     }
   };
 
+  // Galería del producto abierto: el índice manda, el color lo acompaña.
+  const gallery: { url: string; color?: string }[] = (() => {
+    if (!selectedProduct) return [];
+    try {
+      const parsed = JSON.parse(selectedProduct.image);
+      return Array.isArray(parsed) && parsed.length ? parsed : [];
+    } catch { return []; }
+  })();
+
+  const normColor = (c?: string) => (c || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+  const goToSlide = (i: number) => {
+    if (gallery.length === 0) return;
+    const next = (i + gallery.length) % gallery.length;
+    setSlide(next);
+    setModalColor((gallery[next]?.color || '').trim());
+  };
+
   const getProductImage = (product: any, color: string) => {
     if (!product) return '';
     try {
       const images = JSON.parse(product.image);
       if (Array.isArray(images)) {
-        const matched = images.find((img: any) => img.color === color);
+        const matched = images.find((img: any) => normColor(img.color) === normColor(color));
         return matched ? matched.url : images[0].url;
       }
     } catch (e) {
@@ -733,50 +756,87 @@ ${shippingData}
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  onClick={() => setZoomOpen(true)}
-                  className="aspect-square rounded-[1.5rem] overflow-hidden shadow-2xl border border-border-main bg-brand-pink/15 cursor-zoom-in relative group/img"
+                  onPointerDown={e => { pointerStartX.current = e.clientX; }}
+                  onPointerUp={e => {
+                    const dx = e.clientX - pointerStartX.current;
+                    if (Math.abs(dx) > 45 && gallery.length > 1) {
+                      swipedAt.current = Date.now();
+                      goToSlide(slide + (dx < 0 ? 1 : -1));
+                    }
+                  }}
+                  onClick={() => {
+                    // un desliz también emite click: lo ignoramos solo si acaba de pasar
+                    if (Date.now() - swipedAt.current < 350) return;
+                    gallery.length > 1 ? goToSlide(slide + 1) : setZoomOpen(true);
+                  }}
+                  className="aspect-square rounded-[1.5rem] overflow-hidden shadow-2xl border border-border-main bg-brand-pink/15 relative select-none cursor-pointer"
                 >
                   <img 
-                    src={getProductImage(selectedProduct, modalColor)} 
+                    src={gallery[slide]?.url || getProductImage(selectedProduct, modalColor)} 
                     alt={selectedProduct.name}
                     className="w-full h-full object-cover"
-                    loading="lazy"
+                    draggable={false}
+                    loading="eager"
                     referrerPolicy="no-referrer"
                   />
-                  <span className="absolute bottom-3 right-3 bg-black/45 text-white rounded-full p-2 backdrop-blur-sm opacity-0 group-hover/img:opacity-100 transition-opacity">
-                    <ZoomIn size={18} />
+                  {/* precarga la siguiente para que el desliz no parpadee */}
+                  {gallery.length > 1 && (
+                    <img src={gallery[(slide + 1) % gallery.length].url} alt="" className="hidden" referrerPolicy="no-referrer" />
+                  )}
+
+                  <span className="absolute bottom-3 left-3 bg-black/45 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full backdrop-blur-sm pointer-events-none">
+                    {gallery[slide]?.color || 'Principal'}{gallery.length > 1 ? ` · ${slide + 1}/${gallery.length}` : ''}
                   </span>
+
+                  <button
+                    type="button"
+                    title="Ampliar"
+                    onClick={e => { e.stopPropagation(); setZoomOpen(true); }}
+                    className="absolute top-3 right-3 bg-black/45 text-white rounded-full p-2.5 backdrop-blur-sm hover:bg-black/65 transition-colors"
+                  >
+                    <ZoomIn size={18} />
+                  </button>
+
+                  {gallery.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        title="Anterior"
+                        onClick={e => { e.stopPropagation(); goToSlide(slide - 1); }}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/85 text-text-primary rounded-full p-2.5 shadow-lg hover:bg-white transition-colors"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <button
+                        type="button"
+                        title="Siguiente"
+                        onClick={e => { e.stopPropagation(); goToSlide(slide + 1); }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/85 text-text-primary rounded-full p-2.5 shadow-lg hover:bg-white transition-colors"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </>
+                  )}
                 </motion.div>
 
                 {/* Todos los colores a la vista */}
-                {(() => {
-                  let imgs: { url: string; color?: string }[] = [];
-                  try {
-                    const parsed = JSON.parse(selectedProduct.image);
-                    imgs = Array.isArray(parsed) ? parsed : [];
-                  } catch { imgs = []; }
-                  if (imgs.length < 2) return null;
-                  return (
-                    <div className="grid grid-cols-5 gap-2">
-                      {imgs.map((img, i) => {
-                        const activo = (img.color || '') === modalColor || (!modalColor && i === 0);
-                        return (
-                          <button
-                            key={`${img.url}-${i}`}
-                            onClick={() => setModalColor(img.color || '')}
-                            title={img.color || 'Sin color'}
-                            className={cn(
-                              "relative aspect-square rounded-lg overflow-hidden border-2 bg-brand-pink/10 transition-all",
-                              activo ? "border-brand-pink shadow-lg scale-105" : "border-border-main opacity-70 hover:opacity-100"
-                            )}
-                          >
-                            <img src={img.url} alt={img.color || ''} loading="lazy" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+                {gallery.length > 1 && (
+                  <div className="grid grid-cols-5 gap-2">
+                    {gallery.map((img, i) => (
+                      <button
+                        key={`${img.url}-${i}`}
+                        onClick={() => goToSlide(i)}
+                        title={img.color || 'Sin color'}
+                        className={cn(
+                          "relative aspect-square rounded-lg overflow-hidden border-2 bg-brand-pink/10 transition-all",
+                          i === slide ? "border-brand-pink shadow-lg scale-105" : "border-border-main opacity-70 hover:opacity-100"
+                        )}
+                      >
+                        <img src={img.url} alt={img.color || ''} loading="lazy" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               <div className="flex gap-4">
                 <div className="flex-1 p-4 bg-bg-secondary rounded-lg text-center">
                   <p className="text-[10px] font-black text-brand-pink uppercase tracking-widest">Categoría</p>
@@ -818,10 +878,14 @@ ${shippingData}
                   {selectedProduct.colors.map((color: string) => (
                     <button
                       key={color}
-                      onClick={() => setModalColor(color)}
+                      onClick={() => {
+                        setModalColor(color);
+                        const i = gallery.findIndex(img => normColor(img.color) === normColor(color));
+                        if (i >= 0) setSlide(i);
+                      }}
                       className={cn(
                         "px-6 py-3 rounded-lg text-sm font-bold transition-all border-2",
-                        modalColor === color 
+                        normColor(modalColor) === normColor(color) 
                           ? "bg-brand-pink text-white border-brand-pink shadow-xl shadow-brand-pink/10 scale-105" 
                           : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
                       )}
@@ -1136,10 +1200,28 @@ ${shippingData}
               <X size={22} />
             </button>
             <img
-              src={getProductImage(selectedProduct, modalColor)}
+              src={gallery[slide]?.url || getProductImage(selectedProduct, modalColor)}
               alt={selectedProduct.name}
               className="max-w-full max-h-full object-contain rounded-xl"
             />
+            {gallery.length > 1 && (
+              <>
+                <button
+                  onClick={e => { e.stopPropagation(); goToSlide(slide - 1); }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/15 text-white rounded-full p-3 hover:bg-white/25 transition-colors"
+                  title="Anterior"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); goToSlide(slide + 1); }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/15 text-white rounded-full p-3 hover:bg-white/25 transition-colors"
+                  title="Siguiente"
+                >
+                  <ChevronRight size={24} />
+                </button>
+              </>
+            )}
           </div>
         )}
 
