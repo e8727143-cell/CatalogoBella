@@ -735,6 +735,11 @@ export default function App() {
     return product.image;
   };
 
+  // WhatsApp no adjunta imágenes por link de texto, pero sí dibuja la foto si la URL es un jpg directo
+  // (f_auto devuelve webp y el preview queda sin miniatura)
+  const getShareImage = (product: any, color: string) =>
+    getProductImage(product, color).replace('/f_auto,', '/f_jpg,');
+
   const handleNextPair = () => {
     if (!modalColor || !modalSize) {
       setNotification({ message: 'Por favor, elige color y talle', type: 'error' });
@@ -775,8 +780,8 @@ export default function App() {
       const promo = PROMOS.find(p => p.id === selectedPromo);
       totalValue = promo ? String(promo.price) : '';
       productDetails = `
-🔗 *Link 1:* ${getProductImage(promoFirstPair.product, promoFirstPair.color)}
-🔗 *Link 2:* ${getProductImage(selectedProduct, modalColor)}
+🔗 *Link 1:* ${getShareImage(promoFirstPair.product, promoFirstPair.color)}
+🔗 *Link 2:* ${getShareImage(selectedProduct, modalColor)}
 
 ⭐ *${promo?.title || 'Promo'}* ⭐
 
@@ -793,7 +798,7 @@ export default function App() {
     } else {
       totalValue = selectedProduct.price || '';
       productDetails = `
-🔗 *Link:* ${getProductImage(selectedProduct, modalColor)}
+🔗 *Link:* ${getShareImage(selectedProduct, modalColor)}
 
 📌 *Producto:* ${selectedProduct.name}
 🎨 *Color:* ${val(modalColor)}
