@@ -986,6 +986,10 @@ ${shippingData}
                     </div>
                   )}
                 </div>
+                <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                  Color seleccionado:{' '}
+                  <span className="text-brand-pink">{modalColor?.trim() || gallery[slide]?.color?.trim() || 'Elegí una foto'}</span>
+                </p>
                 {selectedProduct.price && !selectedPromo && (
                   <div className="mt-4 flex items-center justify-between gap-4 px-5 py-3 rounded-xl bg-[#F2E4DC] border border-[#E8D2C6]">
                     <span className="text-xs font-black uppercase tracking-widest text-brand-pink">Precio</span>
