@@ -25,8 +25,7 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  Footprints,
-  ZoomIn
+  Footprints
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { 
@@ -935,15 +934,6 @@ ${shippingData}
                   <span className="absolute bottom-3 left-3 bg-black/45 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full backdrop-blur-sm pointer-events-none">
                     {gallery[slide]?.color || 'Principal'}{gallery.length > 1 ? ` · ${slide + 1}/${gallery.length}` : ''}
                   </span>
-
-                  <button
-                    type="button"
-                    title="Ampliar"
-                    onClick={e => { e.stopPropagation(); setZoomOpen(true); }}
-                    className="absolute top-3 right-3 bg-black/45 text-white rounded-full p-2.5 backdrop-blur-sm hover:bg-black/65 transition-colors"
-                  >
-                    <ZoomIn size={18} />
-                  </button>
 
                   {gallery.length > 1 && (
                     <>
