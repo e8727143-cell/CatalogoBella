@@ -142,13 +142,13 @@ const SizeReference = ({ cm, onChange }: { cm: string; onChange: (val: string) =
 const BR_TALLES = ['34', '35', '36', '37', '38', '39', '40', '41', '42', '43'];
 const BR_CM = ['23', '23.5', '24 / 24.5', '25', '25.5', '26', '26.5', '27 / 27.5', '28 / 28.5', '28.5 / 29'];
 
-const SageSizeTable = () => (
+const SizeTable = () => (
   <div className="space-y-2">
-    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest" style={{ color: '#2E4033' }}>
+    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest" style={{ color: '#7A3F4E' }}>
       <Ruler size={14} />
       <span>Guía de Talles</span>
     </div>
-    <div className="rounded-2xl overflow-hidden border" style={{ borderColor: '#C8D6C5' }}>
+    <div className="rounded-2xl overflow-hidden border" style={{ borderColor: '#EBD7D2' }}>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse min-w-[620px] text-center">
           <tbody>
@@ -156,7 +156,7 @@ const SageSizeTable = () => (
               <th
                 scope="row"
                 className="sticky left-0 z-10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-left whitespace-nowrap border"
-                style={{ backgroundColor: '#C8D6C5', color: '#2E4033', borderColor: '#C8D6C5' }}
+                style={{ backgroundColor: '#F7D6DC', color: '#7A3F4E', borderColor: '#ECCBD2' }}
               >
                 Talle BR
               </th>
@@ -164,7 +164,7 @@ const SageSizeTable = () => (
                 <td
                   key={t}
                   className="px-3 py-2 text-[12px] font-black tabular-nums border"
-                  style={{ backgroundColor: '#F2F6F0', color: '#2E4033', borderColor: '#C8D6C5' }}
+                  style={{ backgroundColor: '#FBF4EA', color: '#5B4033', borderColor: '#E9DAC6' }}
                 >
                   {t}
                 </td>
@@ -174,7 +174,7 @@ const SageSizeTable = () => (
               <th
                 scope="row"
                 className="sticky left-0 z-10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-left whitespace-nowrap border"
-                style={{ backgroundColor: '#C8D6C5', color: '#2E4033', borderColor: '#C8D6C5' }}
+                style={{ backgroundColor: '#F7D6DC', color: '#7A3F4E', borderColor: '#ECCBD2' }}
               >
                 cm de plantilla
               </th>
@@ -182,7 +182,7 @@ const SageSizeTable = () => (
                 <td
                   key={`${cm}-${i}`}
                   className="px-3 py-2 text-[12px] font-bold tabular-nums whitespace-nowrap border"
-                  style={{ backgroundColor: '#F2F6F0', color: '#2E4033', borderColor: '#C8D6C5' }}
+                  style={{ backgroundColor: '#FDF8F1', color: '#5B4033', borderColor: '#E9DAC6' }}
                 >
                   {cm}
                 </td>
@@ -192,7 +192,7 @@ const SageSizeTable = () => (
         </table>
       </div>
     </div>
-    <p className="text-[10px] font-semibold" style={{ color: '#2E4033', opacity: 0.65 }}>
+    <p className="text-[10px] font-semibold" style={{ color: '#7A3F4E', opacity: 0.7 }}>
       Medidas de plantilla en centímetros. Ante la duda, elegí medio número más.
     </p>
   </div>
@@ -784,22 +784,18 @@ ${shippingData}
         <header className="sticky top-0 z-50 bg-bg-primary/80 backdrop-blur-md border-b border-border-main">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => {
-                    setSelectedProduct(null);
-                    setPromoFirstPair(null);
-                    setSelectedPromo(null);
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border-main text-text-secondary hover:text-brand-pink hover:border-brand-pink transition-colors"
-                >
-                  <ChevronLeft size={16} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Volver</span>
-                </button>
-                <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-                  <h1 className="text-xl font-bold tracking-tighter text-brand-pink">{STORE_NAME}</h1>
-                </div>
-              </div>
+              <button
+                onClick={() => {
+                  setSelectedProduct(null);
+                  setPromoFirstPair(null);
+                  setSelectedPromo(null);
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border-main text-text-secondary hover:text-brand-pink hover:border-brand-pink transition-colors"
+              >
+                <ChevronLeft size={16} />
+                <span className="text-[10px] font-black uppercase tracking-widest">Volver</span>
+              </button>
+              <h1 className="text-xl font-bold tracking-tighter text-brand-pink">{STORE_NAME}</h1>
             </div>
           </div>
         </header>
@@ -957,7 +953,7 @@ ${shippingData}
               </div>
 
               {/* Guía de talles */}
-              <SageSizeTable />
+              <SizeTable />
 
               {/* Size Selection */}
               <div className="space-y-4">
