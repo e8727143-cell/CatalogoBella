@@ -109,8 +109,8 @@ const UruguayMap = ({ selected, onSelect }: { selected: string; onSelect: (dept:
 
 const SizeReference = ({ cm, onChange }: { cm: string; onChange: (val: string) => void }) => {
   return (
-    <div className="relative overflow-hidden space-y-4 p-6 pt-12 bg-bg-primary rounded-xl border border-border-main shadow-inner">
-      <span className="absolute top-3 left-3 bg-brand-pink text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md">
+    <div className="relative overflow-hidden space-y-4 p-6 pt-9 bg-bg-primary rounded-xl border border-border-main shadow-inner">
+      <span className="absolute top-0 left-0 bg-brand-pink text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-br-xl">
         Obligatorio
       </span>
       <div className="space-y-2">
@@ -908,7 +908,7 @@ ${shippingData}
                     <img src={gallery[(slide + 1) % gallery.length].url} alt="" className="hidden" referrerPolicy="no-referrer" />
                   )}
 
-                  <span className="absolute top-3 left-3 bg-brand-pink text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md">
+                  <span className="absolute top-0 left-0 bg-brand-pink text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-br-xl">
                     Stock Disponible
                   </span>
 
