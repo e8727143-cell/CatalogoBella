@@ -876,12 +876,7 @@ ${shippingData}
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Image Section */}
             <div className="lg:w-1/2 space-y-4">
-              <h2 className="text-4xl font-black text-text-primary leading-tight">{selectedProduct.name}</h2>
-              <div className="flex justify-center">
-                <div className="inline-block bg-text-primary text-bg-primary px-4 py-1 rounded-full text-sm font-black uppercase tracking-widest shadow-lg">
-                  <span>Stock Disponible</span>
-                </div>
-              </div>
+              <h2 className="text-4xl font-black text-text-primary leading-tight text-center">{selectedProduct.name}</h2>
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -912,6 +907,10 @@ ${shippingData}
                   {gallery.length > 1 && (
                     <img src={gallery[(slide + 1) % gallery.length].url} alt="" className="hidden" referrerPolicy="no-referrer" />
                   )}
+
+                  <span className="absolute top-3 left-3 bg-brand-pink text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md">
+                    Stock Disponible
+                  </span>
 
                   <span className="absolute bottom-3 left-3 bg-black/45 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full backdrop-blur-sm pointer-events-none">
                     {gallery[slide]?.color || 'Principal'}{gallery.length > 1 ? ` · ${slide + 1}/${gallery.length}` : ''}
