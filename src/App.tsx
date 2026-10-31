@@ -963,13 +963,13 @@ ${shippingData}
                     <span>Seleccionar Talle</span>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-3">
+                <div className="grid grid-cols-6 gap-2">
                   {selectedProduct.sizes.map((size: string) => (
                     <button
                       key={size}
                       onClick={() => setModalSize(size)}
                       className={cn(
-                        "w-14 h-14 rounded-lg text-sm font-black transition-all border-2 flex items-center justify-center",
+                        "w-full h-14 rounded-lg text-sm font-black transition-all border-2 flex items-center justify-center",
                         modalSize === size 
                           ? "bg-brand-pink text-white border-brand-pink shadow-xl shadow-brand-pink/10 scale-105" 
                           : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
