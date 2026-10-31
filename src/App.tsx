@@ -23,7 +23,9 @@ import {
   LogOut,
   Pencil,
   User,
-  ArrowRight
+  ArrowRight,
+  ChevronLeft,
+  ZoomIn
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { 
@@ -168,6 +170,9 @@ export default function App() {
   const [modalAddress, setModalAddress] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [showSizeRef, setShowSizeRef] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [sizeGuideUrl, setSizeGuideUrl] = useState('');
+  const [guideUploading, setGuideUploading] = useState(false);
 
   const [promoFirstPair, setPromoFirstPair] = useState<any | null>(null);
   const catalogRef = useRef<HTMLDivElement>(null);
@@ -177,6 +182,19 @@ export default function App() {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) setIsAdminAuthenticated(true);
     });
+  }, []);
+
+  // Guía de talles: una sola imagen global, guardada en settings. Si la tabla no existe, se ignora.
+  useEffect(() => {
+    if (!supabase) return;
+    supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'size_guide_url')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value) setSizeGuideUrl(data.value);
+      });
   }, []);
 
   useEffect(() => {
@@ -268,7 +286,7 @@ export default function App() {
     setModalCm(cm);
   };
 
-  const categories = ['Todos', 'Femenino', 'Masculino', 'Infantil', 'Unisex'];
+  const categories = ['Todos', 'Femenino', 'Masculino', 'Infantil', 'Unisex', 'Deportivos', 'Chanclas'];
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
@@ -452,9 +470,55 @@ export default function App() {
     setSizeRange({ from: '36', to: '40' });
   };
 
+  const uploadToCloudinary = async (file: File) => {
+    // Compresión en el navegador: 800 px máx, JPEG 0.7. Evita crashes en celulares con fotos grandes.
+    const compressed = await new Promise<File>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX = 800;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > MAX) { height *= MAX / width; width = MAX; }
+          } else if (height > MAX) {
+            width *= MAX / height; height = MAX;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(blob => {
+            blob ? resolve(new File([blob], file.name, { type: 'image/jpeg' })) : reject(new Error('Error al comprimir imagen'));
+          }, 'image/jpeg', 0.7);
+        };
+        img.onerror = () => reject(new Error('Error al cargar imagen'));
+      };
+      reader.onerror = () => reject(new Error('Error al leer archivo'));
+    });
+
+    const formData = new FormData();
+    formData.append('file', compressed);
+    formData.append('upload_preset', 'bella_catalogo');
+
+    const response = await fetch('https://api.cloudinary.com/v1_1/nudnxkcm/image/upload', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await response.json();
+    if (!response.ok || !data.secure_url) {
+      throw new Error(data?.error?.message || 'Cloudinary rechazó la imagen');
+    }
+    // f_auto → WebP/AVIF según navegador, q_auto + w_700 recorta el peso
+    return String(data.secure_url).replace('/upload/', '/upload/f_auto,q_auto,w_700/');
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
     if (!supabase) {
       setNotification({ message: 'Error: Supabase no está configurado correctamente.', type: 'error' });
@@ -463,82 +527,43 @@ export default function App() {
 
     try {
       setUploading(true);
-      
-      // Client-side compression to prevent mobile crashes
-      const compressedFile = await new Promise<File>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-          const img = new Image();
-          img.src = event.target?.result as string;
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 800;
-            const MAX_HEIGHT = 800;
-            let width = img.width;
-            let height = img.height;
-
-            if (width > height) {
-              if (width > MAX_WIDTH) {
-                height *= MAX_WIDTH / width;
-                width = MAX_WIDTH;
-              }
-            } else {
-              if (height > MAX_HEIGHT) {
-                width *= MAX_HEIGHT / height;
-                height = MAX_HEIGHT;
-              }
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx?.drawImage(img, 0, 0, width, height);
-            
-            canvas.toBlob((blob) => {
-              if (blob) {
-                resolve(new File([blob], file.name, { type: 'image/jpeg' }));
-              } else {
-                reject(new Error('Error al comprimir imagen'));
-              }
-            }, 'image/jpeg', 0.7);
-          };
-          img.onerror = () => reject(new Error('Error al cargar imagen'));
-        };
-        reader.onerror = () => reject(new Error('Error al leer archivo'));
-      });
-
-      // Subida directa a Cloudinary (preset sin firma)
-      const formData = new FormData();
-      formData.append('file', compressedFile);
-      formData.append('upload_preset', 'bella_catalogo');
-
-      const response = await fetch('https://api.cloudinary.com/v1_1/nudnxkcm/image/upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.secure_url) {
-        throw new Error(data?.error?.message || 'Cloudinary rechazó la imagen');
+      const urls: string[] = [];
+      for (const file of files) {
+        urls.push(await uploadToCloudinary(file));
       }
-
-      // f_auto → WebP/AVIF según navegador, q_auto + w_700 recorta el peso
-      const optimizedUrl = String(data.secure_url).replace('/upload/', '/upload/f_auto,q_auto,w_700/');
-
       setNewProduct(prev => ({
         ...prev,
-        images: [...prev.images, { url: optimizedUrl, color: '' }]
+        images: [...prev.images, ...urls.map(url => ({ url, color: '' }))]
       }));
     } catch (error: any) {
       console.error('Error uploading image:', error);
-      setNotification({ 
-        message: `Error al subir: ${error.message || 'Revisa el preset "bella_catalogo"'}`, 
-        type: 'error' 
+      setNotification({
+        message: `Error al subir: ${error.message || 'Revisa el preset "bella_catalogo"'}`,
+        type: 'error'
       });
     } finally {
       setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSizeGuideUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !supabase) return;
+    try {
+      setGuideUploading(true);
+      const url = await uploadToCloudinary(file);
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ key: 'size_guide_url', value: url, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      setSizeGuideUrl(url);
+      setNotification({ message: 'Guía de talles actualizada', type: 'success' });
+    } catch (err: any) {
+      setNotification({ message: `Error al guardar la guía: ${err.message}`, type: 'error' });
+    } finally {
+      setGuideUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -677,14 +702,18 @@ ${shippingData}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center gap-4">
-                <div 
+                <button
                   onClick={() => {
                     setSelectedProduct(null);
                     setPromoFirstPair(null);
                     setSelectedPromo(null);
                   }}
-                  className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border-main text-text-secondary hover:text-brand-pink hover:border-brand-pink transition-colors"
                 >
+                  <ChevronLeft size={16} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Volver</span>
+                </button>
+                <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
                   <h1 className="text-xl font-bold tracking-tighter text-brand-pink">{STORE_NAME}</h1>
                 </div>
               </div>
@@ -704,7 +733,8 @@ ${shippingData}
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="aspect-square rounded-[1.5rem] overflow-hidden shadow-2xl border border-border-main bg-brand-pink/15"
+                  onClick={() => setZoomOpen(true)}
+                  className="aspect-square rounded-[1.5rem] overflow-hidden shadow-2xl border border-border-main bg-brand-pink/15 cursor-zoom-in relative group/img"
                 >
                   <img 
                     src={getProductImage(selectedProduct, modalColor)} 
@@ -713,7 +743,40 @@ ${shippingData}
                     loading="lazy"
                     referrerPolicy="no-referrer"
                   />
+                  <span className="absolute bottom-3 right-3 bg-black/45 text-white rounded-full p-2 backdrop-blur-sm opacity-0 group-hover/img:opacity-100 transition-opacity">
+                    <ZoomIn size={18} />
+                  </span>
                 </motion.div>
+
+                {/* Todos los colores a la vista */}
+                {(() => {
+                  let imgs: { url: string; color?: string }[] = [];
+                  try {
+                    const parsed = JSON.parse(selectedProduct.image);
+                    imgs = Array.isArray(parsed) ? parsed : [];
+                  } catch { imgs = []; }
+                  if (imgs.length < 2) return null;
+                  return (
+                    <div className="grid grid-cols-5 gap-2">
+                      {imgs.map((img, i) => {
+                        const activo = (img.color || '') === modalColor || (!modalColor && i === 0);
+                        return (
+                          <button
+                            key={`${img.url}-${i}`}
+                            onClick={() => setModalColor(img.color || '')}
+                            title={img.color || 'Sin color'}
+                            className={cn(
+                              "relative aspect-square rounded-lg overflow-hidden border-2 bg-brand-pink/10 transition-all",
+                              activo ? "border-brand-pink shadow-lg scale-105" : "border-border-main opacity-70 hover:opacity-100"
+                            )}
+                          >
+                            <img src={img.url} alt={img.color || ''} loading="lazy" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               <div className="flex gap-4">
                 <div className="flex-1 p-4 bg-bg-secondary rounded-lg text-center">
                   <p className="text-[10px] font-black text-brand-pink uppercase tracking-widest">Categoría</p>
@@ -800,6 +863,17 @@ ${shippingData}
                   <div className="pt-2">
                     <SizeReference cm={modalCm} onChange={handleCmChange} />
                   </div>
+
+                  {sizeGuideUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSizeRef(true)}
+                      className="mt-3 w-full py-3 rounded-xl border-2 border-dashed border-brand-pink/50 text-brand-pink text-[10px] font-black uppercase tracking-widest hover:bg-brand-pink/5 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Ruler size={14} />
+                      Ver guía de talles
+                    </button>
+                  )}
                 </div>
 
               {/* Destination Selection */}
@@ -1047,6 +1121,44 @@ ${shippingData}
             <p className="text-text-secondary text-xs font-bold uppercase tracking-widest">BELLA URUGUAY</p>
           </div>
         </footer>
+
+        {/* Zoom de la foto */}
+        {zoomOpen && (
+          <div
+            onClick={() => setZoomOpen(false)}
+            className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out"
+          >
+            <button
+              onClick={() => setZoomOpen(false)}
+              className="absolute top-4 right-4 bg-white/15 text-white rounded-full p-3 hover:bg-white/25 transition-colors"
+              title="Cerrar"
+            >
+              <X size={22} />
+            </button>
+            <img
+              src={getProductImage(selectedProduct, modalColor)}
+              alt={selectedProduct.name}
+              className="max-w-full max-h-full object-contain rounded-xl"
+            />
+          </div>
+        )}
+
+        {/* Guía de talles */}
+        {showSizeRef && sizeGuideUrl && (
+          <div
+            onClick={() => setShowSizeRef(false)}
+            className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-4"
+          >
+            <div className="max-w-3xl w-full max-h-full overflow-auto rounded-2xl bg-white p-2">
+              <div className="flex justify-end">
+                <button onClick={() => setShowSizeRef(false)} className="p-2 text-text-secondary hover:text-brand-pink" title="Cerrar">
+                  <X size={20} />
+                </button>
+              </div>
+              <img src={sizeGuideUrl} alt="Guía de talles" className="w-full rounded-xl" />
+            </div>
+          </div>
+        )}
       </div>
       </ErrorBoundary>
     );
@@ -1237,6 +1349,16 @@ ${shippingData}
                       bar: "bg-gradient-to-r from-[#FFE7EE] to-white border-brand-pink/40",
                       stripe: "bg-brand-pink/80",
                       halo: "bg-brand-pink/30",
+                    },
+                    Deportivos: {
+                      bar: "bg-gradient-to-r from-sky-100 to-sky-50 border-sky-300",
+                      stripe: "bg-sky-400",
+                      halo: "bg-sky-200/80",
+                    },
+                    Chanclas: {
+                      bar: "bg-gradient-to-r from-violet-100 to-violet-50 border-violet-300",
+                      stripe: "bg-violet-400",
+                      halo: "bg-violet-200/80",
                     },
                   }[cat] ?? { bar: "bg-bg-secondary border-border-main", stripe: "bg-brand-pink", halo: "bg-transparent" };
 
@@ -1537,6 +1659,24 @@ ${shippingData}
                       {newProduct.images.map((img, idx) => (
                         <div key={idx} className="relative group bg-bg-secondary rounded-xl border border-border-main p-2 space-y-2">
                           <img src={img.url} alt="" loading="lazy" className="w-full aspect-square object-cover rounded-lg" />
+                          {idx === 0 ? (
+                            <span className="absolute top-1 left-1 bg-[#D4AF37] text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md shadow">
+                              Portada
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const imgs = [...newProduct.images];
+                                const [elegida] = imgs.splice(idx, 1);
+                                setNewProduct({ ...newProduct, images: [elegida, ...imgs] });
+                              }}
+                              className="absolute top-1 left-1 bg-white/90 text-text-secondary hover:text-[#B8952E] hover:bg-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md shadow transition-colors"
+                              title="Usar como portada"
+                            >
+                              Portada
+                            </button>
+                          )}
                           <input 
                             type="text"
                             placeholder="Color"
@@ -1555,7 +1695,7 @@ ${shippingData}
                               setNewProduct({ ...newProduct, images: newImages });
                             }}
                             className="absolute -top-2 -right-2 bg-red-600 text-white p-2 rounded-full shadow-xl hover:bg-red-700 transition-all z-10"
-                            title="Eliminar imagen"
+                            title="Quitar imagen"
                           >
                             <X size={16} />
                           </button>
@@ -1563,10 +1703,11 @@ ${shippingData}
                       ))}
                       <label className="aspect-square rounded-xl border-2 border-dashed border-border-main flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-brand-pink hover:bg-brand-pink/5 transition-all text-text-secondary hover:text-brand-pink">
                         <Plus size={24} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Subir Foto</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Subir Fotos</span>
                         <input 
                           type="file" 
                           accept="image/*"
+                          multiple
                           onChange={handleImageUpload}
                           className="hidden"
                         />
@@ -1589,6 +1730,8 @@ ${shippingData}
                       <option value="Masculino">Masculino</option>
                       <option value="Infantil">Infantil</option>
                       <option value="Unisex">Unisex</option>
+                      <option value="Deportivos">Deportivos</option>
+                      <option value="Chanclas">Chanclas</option>
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -1654,7 +1797,16 @@ ${shippingData}
                           </div>
                           <div className="flex flex-wrap gap-1.5">
                             {guardados.length > 0 ? guardados.map((s, i) => (
-                              <span key={`${s}-${i}`} className="px-3 py-1.5 rounded-lg bg-bg-secondary border border-border-main text-xs font-black text-text-primary tabular-nums">{s}</span>
+                              <button
+                                key={`${s}-${i}`}
+                                type="button"
+                                title="Quitar talle"
+                                onClick={() => setNewProduct({ ...newProduct, sizes: guardados.filter((_, k) => k !== i).join(', ') })}
+                                className="group/talle px-3 py-1.5 rounded-lg bg-bg-secondary border border-border-main text-xs font-black text-text-primary tabular-nums hover:border-red-400 hover:text-red-500 transition-colors flex items-center gap-1"
+                              >
+                                {s}
+                                <X size={10} className="opacity-40 group-hover/talle:opacity-100" />
+                              </button>
                             )) : (
                               <span className="text-xs font-semibold text-text-secondary/70">Elegí el rango y tocá Aplicar.</span>
                             )}
@@ -1687,6 +1839,32 @@ ${shippingData}
                     </button>
                   </div>
                 </form>
+              </div>
+
+              {/* Guía de talles */}
+              <div className="bg-bg-primary p-6 sm:p-8 rounded-2xl border border-border-main shadow-xl space-y-4">
+                <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                  <Ruler className="text-brand-pink" />
+                  Guía de Talles
+                </h3>
+                <p className="text-xs text-text-secondary">Imagen que ve el cliente al tocar "Ver guía de talles" en cada producto.</p>
+                <div className="flex flex-wrap items-center gap-4">
+                  {sizeGuideUrl ? (
+                    <img src={sizeGuideUrl} alt="Guía de talles" className="h-28 rounded-xl border border-border-main object-contain bg-white" />
+                  ) : (
+                    <span className="text-xs font-black uppercase tracking-widest text-text-secondary/60">Sin imagen cargada</span>
+                  )}
+                  <label className="px-5 py-3 rounded-xl bg-brand-pink text-white text-[10px] font-black uppercase tracking-widest cursor-pointer hover:opacity-90 transition-opacity">
+                    {guideUploading ? 'Subiendo...' : (sizeGuideUrl ? 'Cambiar imagen' : 'Subir imagen')}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={guideUploading}
+                      onChange={handleSizeGuideUpload}
+                    />
+                  </label>
+                </div>
               </div>
 
               {/* Manage Existing Products */}
