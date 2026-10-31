@@ -876,6 +876,7 @@ ${shippingData}
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Image Section */}
             <div className="lg:w-1/2 space-y-4">
+              <h2 className="text-4xl font-black text-text-primary leading-tight">{selectedProduct.name}</h2>
               <div className="flex justify-center">
                 <div className="inline-block bg-text-primary text-bg-primary px-4 py-1 rounded-full text-sm font-black uppercase tracking-widest shadow-lg">
                   <span>Stock Disponible</span>
@@ -980,7 +981,6 @@ ${shippingData}
             {/* Config Section */}
             <div className="lg:w-1/2 space-y-10">
               <div>
-                <h2 className="text-4xl font-black text-text-primary mb-2 leading-tight">{selectedProduct.name}</h2>
                 <div className="flex flex-wrap gap-2">
                   {selectedPromo && (
                     <div className="inline-block bg-brand-pink text-white px-4 py-1 rounded-full text-sm font-black uppercase tracking-widest shadow-lg shadow-brand-pink/10">
