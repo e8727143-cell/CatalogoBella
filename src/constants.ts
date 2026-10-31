@@ -48,7 +48,7 @@ export const FAQ_ITEMS = [
   },
   {
     question: "¿Qué talles tienen?",
-    answer: "Contamos con talles del 36 al 45 EUROPA."
+    answer: "Contamos con talles del 34 al 43 (numeración de Brasil)."
   },
   {
     question: "¿Cómo elijo mi talle?",

@@ -734,12 +734,12 @@ export default function App() {
 
 1️⃣ *Par 1:* ${promoFirstPair.product.name}
 🎨 *Color:* ${promoFirstPair.color}
-📏 *Numero:* ${promoFirstPair.size} EUR
+📏 *Numero:* ${promoFirstPair.size} BR
 📏 *CM plantilla:* ${promoFirstPair.cm}
 
 2️⃣ *Par 2:* ${selectedProduct.name}
 🎨 *Color:* ${modalColor}
-📏 *Numero:* ${modalSize} EUR
+📏 *Numero:* ${modalSize} BR
 📏 *CM plantilla:* ${modalCm}
 `;
     } else {
@@ -749,7 +749,7 @@ export default function App() {
 
 📌 *Producto:* ${selectedProduct.name}
 🎨 *Color:* ${modalColor}
-📏 *Numero:* ${modalSize} EUR
+📏 *Numero:* ${modalSize} BR
 📏 *CM plantilla:* ${modalCm}
 `;
     }
@@ -977,7 +977,7 @@ ${shippingData}
                     >
                       <div className="flex flex-col items-center leading-none">
                         <span>{size}</span>
-                        <span className="text-[8px] opacity-70 mt-0.5">EUR</span>
+                        <span className="text-[8px] opacity-70 mt-0.5">BR</span>
                       </div>
                     </button>
                   ))}
@@ -1211,7 +1211,7 @@ ${shippingData}
                     />
                     <div>
                       <p className="font-bold text-text-primary text-sm">{promoFirstPair.product.name}</p>
-                      <p className="text-xs text-text-secondary">{promoFirstPair.color} | Talle {promoFirstPair.size} EUR</p>
+                      <p className="text-xs text-text-secondary">{promoFirstPair.color} | Talle {promoFirstPair.size} BR</p>
                     </div>
                   </div>
                 </div>
