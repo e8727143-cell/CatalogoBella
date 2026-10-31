@@ -1446,7 +1446,12 @@ ${shippingData}
                     <span>{STORE_NAME}</span>
                     <span className="font-bold uppercase">Administradora</span>
                   </span>
-                ) : STORE_NAME}
+                ) : (
+                  <span className="inline-flex items-baseline gap-2">
+                    <span>{STORE_NAME}</span>
+                    {IS_WHOLESALE && <span className="text-sm font-black uppercase tracking-widest">Mayorista</span>}
+                  </span>
+                )}
               </h1>
             </div>
             
@@ -1494,13 +1499,12 @@ ${shippingData}
         )}
         {/* Precios mayoristas */}
         {IS_WHOLESALE && !isAdminPanel && (
-          <section className="mb-8 rounded-2xl border-2 border-brand-pink/40 bg-brand-pink/10 p-5 sm:p-6 text-center space-y-3">
-            <p className="text-brand-pink font-black uppercase tracking-[0.25em] text-xs">Catálogo mayorista</p>
-            <p className="text-text-primary text-sm sm:text-base font-bold leading-relaxed">
-              1. En la primera compra, el mínimo es de 3 pares para acceder a precios especiales.
-              <br />
-              2. A partir de la segunda compra, podés llevar desde 1 par.
-            </p>
+          <section className="mb-8 rounded-2xl border-2 border-brand-pink/40 bg-brand-pink/10 p-5 sm:p-6 space-y-4">
+            <p className="text-brand-pink font-black uppercase tracking-[0.25em] text-xs text-center">Catálogo mayorista</p>
+            <div className="space-y-2 text-left text-text-primary text-sm sm:text-base font-bold leading-relaxed">
+              <p>1. En la primera compra, el mínimo es de 3 pares para acceder a precios especiales.</p>
+              <p>2. A partir de la segunda compra, podés llevar desde 1 par.</p>
+            </div>
           </section>
         )}
 
