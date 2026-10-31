@@ -138,6 +138,66 @@ const SizeReference = ({ cm, onChange }: { cm: string; onChange: (val: string) =
 
 // --- Main App ---
 
+// Tabla de talles BR: medidas de plantilla en cm. Una sola fuente, sin duplicar en el JSX.
+const BR_TALLES = ['34', '35', '36', '37', '38', '39', '40', '41', '42', '43'];
+const BR_CM = ['23', '23.5', '24 / 24.5', '25', '25.5', '26', '26.5', '27 / 27.5', '28 / 28.5', '28.5 / 29'];
+
+const SageSizeTable = () => (
+  <div className="space-y-2">
+    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest" style={{ color: '#2E4033' }}>
+      <Ruler size={14} />
+      <span>Guía de Talles</span>
+    </div>
+    <div className="rounded-2xl overflow-hidden border" style={{ borderColor: '#C8D6C5' }}>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse min-w-[620px] text-center">
+          <tbody>
+            <tr>
+              <th
+                scope="row"
+                className="sticky left-0 z-10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-left whitespace-nowrap border"
+                style={{ backgroundColor: '#C8D6C5', color: '#2E4033', borderColor: '#C8D6C5' }}
+              >
+                Talle BR
+              </th>
+              {BR_TALLES.map(t => (
+                <td
+                  key={t}
+                  className="px-3 py-2 text-[12px] font-black tabular-nums border"
+                  style={{ backgroundColor: '#F2F6F0', color: '#2E4033', borderColor: '#C8D6C5' }}
+                >
+                  {t}
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <th
+                scope="row"
+                className="sticky left-0 z-10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-left whitespace-nowrap border"
+                style={{ backgroundColor: '#C8D6C5', color: '#2E4033', borderColor: '#C8D6C5' }}
+              >
+                cm de plantilla
+              </th>
+              {BR_CM.map((cm, i) => (
+                <td
+                  key={`${cm}-${i}`}
+                  className="px-3 py-2 text-[12px] font-bold tabular-nums whitespace-nowrap border"
+                  style={{ backgroundColor: '#F2F6F0', color: '#2E4033', borderColor: '#C8D6C5' }}
+                >
+                  {cm}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p className="text-[10px] font-semibold" style={{ color: '#2E4033', opacity: 0.65 }}>
+      Medidas de plantilla en centímetros. Ante la duda, elegí medio número más.
+    </p>
+  </div>
+);
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'catalog' | 'info' | 'order' | 'admin'>('catalog');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
@@ -895,6 +955,9 @@ ${shippingData}
                   ))}
                 </div>
               </div>
+
+              {/* Guía de talles */}
+              <SageSizeTable />
 
               {/* Size Selection */}
               <div className="space-y-4">
