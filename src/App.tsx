@@ -113,7 +113,7 @@ const SizeReference = ({ cm, onChange }: { cm: string; onChange: (val: string) =
         Obligatorio
       </span>
       <div className="space-y-2">
-        <label className="text-xs font-black text-text-secondary uppercase tracking-widest block text-center">
+        <label className="text-[9px] sm:text-[10px] font-black text-text-secondary uppercase tracking-wide sm:tracking-widest block text-center whitespace-nowrap">
           Escribe los centimetros de tu plantilla
         </label>
         <div className="flex justify-center items-center gap-3">
@@ -895,8 +895,13 @@ ${shippingData}
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  onPointerDown={e => { pointerStartX.current = e.clientX; }}
+                  onPointerDown={e => {
+                    // el mouse no arrastra: un clic abre el zoom
+                    if (e.pointerType === 'mouse') return;
+                    pointerStartX.current = e.clientX;
+                  }}
                   onPointerUp={e => {
+                    if (e.pointerType === 'mouse') return;
                     const dx = e.clientX - pointerStartX.current;
                     if (Math.abs(dx) > 45 && gallery.length > 1) {
                       swipedAt.current = Date.now();
@@ -906,9 +911,9 @@ ${shippingData}
                   onClick={() => {
                     // un desliz también emite click: lo ignoramos solo si acaba de pasar
                     if (Date.now() - swipedAt.current < 350) return;
-                    gallery.length > 1 ? goToSlide(slide + 1) : setZoomOpen(true);
+                    setZoomOpen(true);
                   }}
-                  className="aspect-square rounded-[1.5rem] overflow-hidden shadow-2xl border border-border-main bg-brand-pink/15 relative select-none cursor-pointer"
+                  className="aspect-square rounded-[1.5rem] overflow-hidden shadow-2xl border border-border-main bg-brand-pink/15 relative select-none cursor-zoom-in"
                 >
                   <img 
                     src={gallery[slide]?.url || getProductImage(selectedProduct, modalColor)} 
