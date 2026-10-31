@@ -280,6 +280,7 @@ export default function App() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);  const [adminPassword, setAdminPassword] = useState('');
+  const [adminCatalog, setAdminCatalog] = useState<'retail' | 'wholesale'>(IS_WHOLESALE ? 'wholesale' : 'retail');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -439,7 +440,8 @@ export default function App() {
       const matchesCategory = selectedCategory === 'Todos' || product.category === selectedCategory;
       const matchesPromo = !selectedPromo || product.promo === selectedPromo;
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesPromo && matchesSearch;
+      const matchesChannel = IS_WHOLESALE ? true : !product.wholesale_only;
+      return matchesCategory && matchesPromo && matchesSearch && matchesChannel;
     });
   }, [products, selectedCategory, selectedPromo, searchQuery]);
 
@@ -489,6 +491,7 @@ export default function App() {
     setIsAdminAuthenticated(true);
     setShowAdminLogin(false);
     setActiveTab('admin');
+    setAdminCatalog(IS_WHOLESALE ? 'wholesale' : 'retail');
     setAdminPassword('');
   };
 
@@ -514,6 +517,7 @@ export default function App() {
     promo: 'promo-2990',
     price: '',
     price_wholesale: '',
+    wholesale_only: false,
     image: '', // This will store JSON string of images array
     images: [] as {url: string, color: string}[],
     sizes: '36,37,38,39,40'
@@ -553,6 +557,10 @@ export default function App() {
       };
       // Solo se envía si hay valor: así el admin sigue guardando aunque la columna no exista todavía
       if (newProduct.price_wholesale) productData.price_wholesale = newProduct.price_wholesale;
+      // Se manda solo cuando cambia, para que el catálogo normal siga guardando sin la columna
+      if (newProduct.wholesale_only !== !!(editingProduct && editingProduct.wholesale_only)) {
+        productData.wholesale_only = newProduct.wholesale_only;
+      }
 
       if (editingProduct) {
         const { error } = await supabase
@@ -596,6 +604,7 @@ export default function App() {
       promo: product.promo,
       price: product.price || '',
       price_wholesale: product.price_wholesale || '',
+      wholesale_only: !!product.wholesale_only,
       image: product.image,
       images: parsedImages,
       sizes: product.sizes.join(', ')
@@ -615,6 +624,7 @@ export default function App() {
       promo: 'promo-2990',
       price: '',
       price_wholesale: '',
+      wholesale_only: false,
       image: '',
       images: [],
       sizes: '36,37,38,39,40'
@@ -1434,6 +1444,7 @@ ${shippingData}
               <h1 
                 className="text-2xl font-bold tracking-tighter text-brand-pink cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap"
                 onClick={() => {
+                  setAdminCatalog(IS_WHOLESALE ? 'wholesale' : 'retail');
                   if (isAdminAuthenticated) {
                     setActiveTab('admin');
                   } else {
@@ -1901,6 +1912,24 @@ ${shippingData}
               exit={{ opacity: 0, y: -20 }}
               className="space-y-12"
             >
+              {/* Pestañas de catálogo */}
+              <div className="flex gap-2 p-1.5 bg-bg-secondary rounded-2xl border border-border-main">
+                {(['retail', 'wholesale'] as const).map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setAdminCatalog(c)}
+                    className={cn(
+                      "flex-1 py-4 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all",
+                      adminCatalog === c
+                        ? "bg-brand-pink text-white shadow-lg shadow-brand-pink/20"
+                        : "text-text-secondary hover:text-brand-pink"
+                    )}
+                  >
+                    {c === 'retail' ? 'BELLA' : 'BELLA MAYORISTA'}
+                  </button>
+                ))}
+              </div>
+
               {/* Add/Edit Product Form */}
               <div className="bg-bg-primary p-6 sm:p-8 rounded-2xl border border-border-main shadow-xl space-y-6">
                 <div className="flex justify-between items-center">
@@ -2023,26 +2052,40 @@ ${shippingData}
                       ))}
                     </select>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Precio Individual (Opcional)</label>
-                    <input 
-                      type="text" 
-                      value={newProduct.price}
-                      onChange={e => setNewProduct({...newProduct, price: e.target.value})}
-                      placeholder="Ej: 1500"
-                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
+                  {adminCatalog === 'wholesale' ? (
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Precio Mayorista (1-10 / 11-20 / 21-30)</label>
+                      <input 
+                        type="text" 
+                        value={newProduct.price_wholesale}
+                        onChange={e => setNewProduct({...newProduct, price_wholesale: e.target.value})}
+                        placeholder="Ej: 1450/1290/1245"
+                        className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Precio Individual (Opcional)</label>
+                      <input 
+                        type="text" 
+                        value={newProduct.price}
+                        onChange={e => setNewProduct({...newProduct, price: e.target.value})}
+                        placeholder="Ej: 1500"
+                        className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
+                      />
+                    </div>
+                  )}
+                  <label className="md:col-span-2 flex items-center gap-3 p-4 rounded-xl border border-border-main bg-bg-secondary cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newProduct.wholesale_only}
+                      onChange={e => setNewProduct({...newProduct, wholesale_only: e.target.checked})}
+                      className="w-5 h-5 accent-brand-pink"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Precio Mayorista (1-10 / 11-20 / 21-30)</label>
-                    <input 
-                      type="text" 
-                      value={newProduct.price_wholesale}
-                      onChange={e => setNewProduct({...newProduct, price_wholesale: e.target.value})}
-                      placeholder="Ej: 1450/1290/1245"
-                      className="w-full p-4 rounded-xl bg-bg-secondary border border-border-main focus:border-brand-pink outline-none transition-all"
-                    />
-                  </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                      Solo mayorista — no aparece en bellacatalogo.com
+                    </span>
+                  </label>
                   <div className="space-y-2">
                     <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Talles</label>
                     {(() => {
@@ -2158,7 +2201,9 @@ ${shippingData}
               <div className="space-y-6">
                 <h3 className="text-xl font-bold text-text-primary">Gestionar Catálogo Actual</h3>
                 <div className="grid grid-cols-1 gap-4">
-                  {products.map(product => (
+                  {products
+                    .filter(product => adminCatalog === 'wholesale' ? true : !product.wholesale_only)
+                    .map(product => (
                     <div key={product.id} className="bg-bg-primary p-4 rounded-xl border border-border-main flex items-center gap-4 shadow-sm hover:border-brand-pink/30 transition-colors">
                       <img src={getProductImage(product, product.colors?.[0])} alt="" loading="lazy" className="w-16 h-16 object-cover rounded-lg" referrerPolicy="no-referrer" />
                       <div className="flex-grow">
@@ -2167,6 +2212,12 @@ ${shippingData}
                         </h4>
                         <p className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-widest font-black">
                           <span>{product.category} • {PROMOS.find(p => p.id === product.promo)?.label}</span>
+                          {product.wholesale_only && <span className="ml-2 text-brand-pink">• Solo mayorista</span>}
+                        </p>
+                        <p className="text-xs font-black text-text-primary mt-1">
+                          {adminCatalog === 'wholesale'
+                            ? (product.price_wholesale ? `Mayorista: ${product.price_wholesale}` : 'Sin precio mayorista')
+                            : (product.price ? `$${product.price}` : 'Sin precio')}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 sm:gap-2">
