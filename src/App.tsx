@@ -26,6 +26,7 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
+  Footprints,
   ZoomIn
 } from 'lucide-react';
 import { cn } from './lib/utils';
@@ -142,61 +143,132 @@ const SizeReference = ({ cm, onChange }: { cm: string; onChange: (val: string) =
 const BR_TALLES = ['34', '35', '36', '37', '38', '39', '40', '41', '42', '43'];
 const BR_CM = ['23', '23.5', '24 / 24.5', '25', '25.5', '26', '26.5', '27 / 27.5', '28 / 28.5', '28.5 / 29'];
 
-const SizeTable = () => (
-  <div className="space-y-2">
-    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest" style={{ color: '#7A3F4E' }}>
-      <Ruler size={14} />
-      <span>Guía de Talles</span>
-    </div>
-    <div className="rounded-2xl overflow-hidden border" style={{ borderColor: '#EBD7D2' }}>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse min-w-[620px] text-center">
-          <tbody>
-            <tr>
-              <th
-                scope="row"
-                className="sticky left-0 z-10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-left whitespace-nowrap border"
-                style={{ backgroundColor: '#F7D6DC', color: '#7A3F4E', borderColor: '#ECCBD2' }}
-              >
-                Talle BR
-              </th>
-              {BR_TALLES.map(t => (
-                <td
-                  key={t}
-                  className="px-3 py-2 text-[12px] font-black tabular-nums border"
-                  style={{ backgroundColor: '#FBF4EA', color: '#5B4033', borderColor: '#E9DAC6' }}
-                >
-                  {t}
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <th
-                scope="row"
-                className="sticky left-0 z-10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-left whitespace-nowrap border"
-                style={{ backgroundColor: '#F7D6DC', color: '#7A3F4E', borderColor: '#ECCBD2' }}
-              >
-                cm de plantilla
-              </th>
-              {BR_CM.map((cm, i) => (
-                <td
-                  key={`${cm}-${i}`}
-                  className="px-3 py-2 text-[12px] font-bold tabular-nums whitespace-nowrap border"
-                  style={{ backgroundColor: '#FDF8F1', color: '#5B4033', borderColor: '#E9DAC6' }}
-                >
-                  {cm}
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
+const SizeTable = () => {
+  const scroller = useRef<HTMLDivElement>(null);
+  const [hayIzq, setHayIzq] = useState(false);
+  const [hayDer, setHayDer] = useState(false);
+  const drag = useRef({ x: 0, left: 0, activo: false });
+
+  const medir = () => {
+    const el = scroller.current;
+    if (!el) return;
+    setHayIzq(el.scrollLeft > 4);
+    setHayDer(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  };
+
+  useEffect(() => {
+    medir();
+    window.addEventListener('resize', medir);
+    return () => window.removeEventListener('resize', medir);
+  }, []);
+
+  const mover = (dx: number) => scroller.current?.scrollBy({ left: dx, behavior: 'smooth' });
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest" style={{ color: '#7A3F4E' }}>
+        <Ruler size={14} />
+        <span>Guía de Talles</span>
       </div>
+
+      <div className="relative rounded-2xl overflow-hidden border" style={{ borderColor: '#EBD7D2' }}>
+        <div
+          ref={scroller}
+          onScroll={medir}
+          onPointerDown={e => {
+            drag.current = { x: e.clientX, left: scroller.current?.scrollLeft ?? 0, activo: true };
+            scroller.current?.setPointerCapture(e.pointerId);
+          }}
+          onPointerMove={e => {
+            if (!drag.current.activo || !scroller.current) return;
+            scroller.current.scrollLeft = drag.current.left - (e.clientX - drag.current.x);
+          }}
+          onPointerUp={() => { drag.current.activo = false; }}
+          onPointerCancel={() => { drag.current.activo = false; }}
+          className="overflow-x-auto select-none cursor-grab active:cursor-grabbing [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-[#FBF4EA] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#F2B8C4]"
+          style={{ scrollbarColor: '#F2B8C4 #FBF4EA' }}
+        >
+          <table className="w-full border-collapse min-w-[620px] text-center">
+            <tbody>
+              <tr>
+                <th
+                  scope="row"
+                  className="sticky left-0 z-10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-left whitespace-nowrap border"
+                  style={{ backgroundColor: '#F7D6DC', color: '#7A3F4E', borderColor: '#ECCBD2' }}
+                >
+                  Talle BR
+                </th>
+                {BR_TALLES.map(t => (
+                  <td
+                    key={t}
+                    className="px-3 py-2 text-[12px] font-black tabular-nums border"
+                    style={{ backgroundColor: '#FBF4EA', color: '#5B4033', borderColor: '#E9DAC6' }}
+                  >
+                    {t}
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <th
+                  scope="row"
+                  className="sticky left-0 z-10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-left whitespace-nowrap border"
+                  style={{ backgroundColor: '#F7D6DC', color: '#7A3F4E', borderColor: '#ECCBD2' }}
+                >
+                  cm de plantilla
+                </th>
+                {BR_CM.map((cm, i) => (
+                  <td
+                    key={`${cm}-${i}`}
+                    className="px-3 py-2 text-[12px] font-bold tabular-nums whitespace-nowrap border"
+                    style={{ backgroundColor: '#FDF8F1', color: '#5B4033', borderColor: '#E9DAC6' }}
+                  >
+                    {cm}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {hayIzq && <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[#F7D6DC] to-transparent" />}
+        {hayDer && <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[#F7D6DC] to-transparent" />}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => mover(-180)}
+          disabled={!hayIzq}
+          title="Ver talles anteriores"
+          className="p-2 rounded-full border transition-all active:scale-90 disabled:opacity-30 disabled:cursor-default"
+          style={{ backgroundColor: '#F7D6DC', borderColor: '#ECCBD2', color: '#7A3F4E' }}
+        >
+          <ChevronLeft size={16} />
+        </button>
+
+        <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest" style={{ color: '#7A3F4E' }}>
+          <Footprints size={14} />
+          Deslizá para ver todos
+        </span>
+
+        <button
+          type="button"
+          onClick={() => mover(180)}
+          disabled={!hayDer}
+          title="Ver más talles"
+          className="p-2 rounded-full border transition-all active:scale-90 disabled:opacity-30 disabled:cursor-default"
+          style={{ backgroundColor: '#F7D6DC', borderColor: '#ECCBD2', color: '#7A3F4E' }}
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+
+      <p className="text-[10px] font-semibold" style={{ color: '#7A3F4E', opacity: 0.7 }}>
+        Medidas de plantilla en centímetros. Ante la duda, elegí medio número más.
+      </p>
     </div>
-    <p className="text-[10px] font-semibold" style={{ color: '#7A3F4E', opacity: 0.7 }}>
-      Medidas de plantilla en centímetros. Ante la duda, elegí medio número más.
-    </p>
-  </div>
-);
+  );
+};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'catalog' | 'info' | 'order' | 'admin'>('catalog');
