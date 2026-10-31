@@ -755,6 +755,71 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Texto exacto que se envía por WhatsApp; el preview y el handler usan la misma fuente
+  const orderMessage = useMemo(() => {
+    if (!selectedProduct) return '';
+    const val = (v?: string | null) => (v && v.trim() ? v.trim() : '—');
+    const isRivera = modalDept.trim().toLowerCase() === 'rivera';
+
+    let shippingData = `👤 *Nombre y Apellido:* ${val(modalFullName)}\n`;
+    if (isRivera) {
+      shippingData += `🏘️ *Barrio:* ${val(modalNeighborhood)}\n🏠 *Dirección:* ${val(modalAddress)}`;
+    } else {
+      shippingData += `🆔 *Cédula:* ${val(modalID)}\n📞 *Teléfono:* ${val(modalPhone)}\n🏢 *Lugar de retiro:* ${val(modalPickupLocation)}`;
+    }
+
+    let productDetails = '';
+    let totalValue = '';
+
+    if (promoFirstPair) {
+      const promo = PROMOS.find(p => p.id === selectedPromo);
+      totalValue = promo ? String(promo.price) : '';
+      productDetails = `
+🔗 *Link 1:* ${getProductImage(promoFirstPair.product, promoFirstPair.color)}
+🔗 *Link 2:* ${getProductImage(selectedProduct, modalColor)}
+
+⭐ *${promo?.title || 'Promo'}* ⭐
+
+1️⃣ *Par 1:* ${promoFirstPair.product.name}
+🎨 *Color:* ${val(promoFirstPair.color)}
+📏 *Numero:* ${val(promoFirstPair.size)} BR
+📏 *CM plantilla:* ${val(promoFirstPair.cm)}
+
+2️⃣ *Par 2:* ${selectedProduct.name}
+🎨 *Color:* ${val(modalColor)}
+📏 *Numero:* ${val(modalSize)} BR
+📏 *CM plantilla:* ${val(modalCm)}
+`;
+    } else {
+      totalValue = selectedProduct.price || '';
+      productDetails = `
+🔗 *Link:* ${getProductImage(selectedProduct, modalColor)}
+
+📌 *Producto:* ${selectedProduct.name}
+🎨 *Color:* ${val(modalColor)}
+📏 *Numero:* ${val(modalSize)} BR
+📏 *CM plantilla:* ${val(modalCm)}
+`;
+    }
+
+    return `¡Hola BELLA! Quiero realizar este pedido:
+${productDetails}
+📍 *Destino:* ${val(modalDept)}
+${isRivera ? '' : `🚚 *Agencia:* ${val(modalAgency)}\n`}
+📦 *Datos de Envío:*
+${shippingData}
+
+💳 *Método de Pago:* ${val(modalPayment)}
+
+💰 *Valor total a pagar:* $${totalValue}
+
+¿Cómo procedo con el pago?`;
+  }, [
+    modalDept, modalAgency, modalPayment, modalFullName, modalNeighborhood,
+    modalAddress, modalID, modalPhone, modalPickupLocation,
+    promoFirstPair, selectedPromo, selectedProduct, modalColor, modalSize, modalCm,
+  ]);
+
   const handleWhatsAppOrder = () => {
     if (!modalDept) {
       setNotification({ message: 'Por favor, selecciona un departamento de destino', type: 'error' });
@@ -784,61 +849,7 @@ export default function App() {
       return;
     }
 
-    let shippingData = `👤 *Nombre y Apellido:* ${modalFullName}\n`;
-    if (isRivera) {
-      shippingData += `🏘️ *Barrio:* ${modalNeighborhood}\n🏠 *Dirección:* ${modalAddress}`;
-    } else {
-      shippingData += `🆔 *Cédula:* ${modalID}\n📞 *Teléfono:* ${modalPhone}\n🏢 *Lugar de retiro:* ${modalPickupLocation}`;
-    }
-
-    let productDetails = '';
-    let totalValue = '';
-
-    if (promoFirstPair) {
-      const promo = PROMOS.find(p => p.id === selectedPromo);
-      totalValue = promo ? String(promo.price) : '';
-      productDetails = `
-🔗 *Link 1:* ${getProductImage(promoFirstPair.product, promoFirstPair.color)}
-🔗 *Link 2:* ${getProductImage(selectedProduct, modalColor)}
-
-⭐ *${promo?.title || 'Promo'}* ⭐
-
-1️⃣ *Par 1:* ${promoFirstPair.product.name}
-🎨 *Color:* ${promoFirstPair.color}
-📏 *Numero:* ${promoFirstPair.size} BR
-📏 *CM plantilla:* ${promoFirstPair.cm}
-
-2️⃣ *Par 2:* ${selectedProduct.name}
-🎨 *Color:* ${modalColor}
-📏 *Numero:* ${modalSize} BR
-📏 *CM plantilla:* ${modalCm}
-`;
-    } else {
-      totalValue = selectedProduct.price || '';
-      productDetails = `
-🔗 *Link:* ${getProductImage(selectedProduct, modalColor)}
-
-📌 *Producto:* ${selectedProduct.name}
-🎨 *Color:* ${modalColor}
-📏 *Numero:* ${modalSize} BR
-📏 *CM plantilla:* ${modalCm}
-`;
-    }
-
-    const message = `¡Hola BELLA! Quiero realizar este pedido:
-${productDetails}
-📍 *Destino:* ${modalDept}
-${isRivera ? '' : `🚚 *Agencia:* ${modalAgency}\n`}
-📦 *Datos de Envío:*
-${shippingData}
-
-💳 *Método de Pago:* ${modalPayment}
-
-💰 *Valor total a pagar:* $${totalValue}
-
-¿Cómo procedo con el pago?`;
-
-    window.open(`https://wa.me/59895149966?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/59895149966?text=${encodeURIComponent(orderMessage)}`, '_blank');
     setPromoFirstPair(null);
   };
 
@@ -1240,6 +1251,22 @@ ${shippingData}
                       ))}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Preview del mensaje de WhatsApp */}
+              {(!selectedPromo || promoFirstPair) && (
+                <div className="p-5 rounded-2xl border border-[#CFE8C4] bg-[#F3FAF0] shadow-sm space-y-3">
+                  <div className="flex items-center gap-2 text-[#3E6B34] uppercase text-[10px] font-black tracking-widest">
+                    <MessageCircle size={14} />
+                    <span>Así se verá tu mensaje</span>
+                  </div>
+                  <div className="rounded-2xl rounded-tl-sm bg-[#DCF8C6] border border-[#C5E9B0] p-4 text-[13px] leading-relaxed text-[#1F2C1A] whitespace-pre-wrap break-words">
+                    {orderMessage}
+                  </div>
+                  <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest text-center">
+                    Revisá los datos antes de enviar
+                  </p>
                 </div>
               )}
 
