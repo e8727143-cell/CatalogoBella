@@ -1449,7 +1449,7 @@ ${shippingData}
                 ) : (
                   <span className="inline-flex items-baseline gap-2">
                     <span>{STORE_NAME}</span>
-                    {IS_WHOLESALE && <span className="text-sm font-black uppercase tracking-widest">Mayorista</span>}
+                    {IS_WHOLESALE && <span className="font-black uppercase tracking-widest">Mayorista</span>}
                   </span>
                 )}
               </h1>
