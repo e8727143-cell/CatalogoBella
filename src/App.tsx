@@ -15,7 +15,6 @@ import {
   X,
   MapPin,
   Ruler,
-  Palette,
   Maximize2,
   Trash2,
   Plus,
@@ -993,34 +992,6 @@ ${shippingData}
                     <span className="text-2xl font-black text-emerald-600">${selectedProduct.price}</span>
                   </div>
                 )}
-              </div>
-
-              {/* Color Selection */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
-                  <Palette size={14} />
-                  <span>Seleccionar Color</span>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {selectedProduct.colors.map((color: string) => (
-                    <button
-                      key={color}
-                      onClick={() => {
-                        setModalColor(color);
-                        const i = gallery.findIndex(img => normColor(img.color) === normColor(color));
-                        if (i >= 0) setSlide(i);
-                      }}
-                      className={cn(
-                        "px-6 py-3 rounded-lg text-sm font-bold transition-all border-2",
-                        normColor(modalColor) === normColor(color) 
-                          ? "bg-brand-pink text-white border-brand-pink shadow-xl shadow-brand-pink/10 scale-105" 
-                          : "bg-bg-primary text-text-secondary border-border-main hover:border-brand-pink"
-                      )}
-                    >
-                      {color}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* Guía de talles */}
