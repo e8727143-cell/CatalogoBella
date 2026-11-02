@@ -309,6 +309,7 @@ export default function App() {
   const [modalDept, setModalDept] = useState('');
   const [modalAgency, setModalAgency] = useState('');
   const [modalCm, setModalCm] = useState<string>('0');
+  const [modalQty, setModalQty] = useState<number>(IS_WHOLESALE ? 3 : 1);
   const [modalName, setModalName] = useState('');
   const [modalPayment, setModalPayment] = useState('');
   const [modalFullName, setModalFullName] = useState('');
@@ -514,6 +515,7 @@ export default function App() {
     setModalDept('');
     setModalAgency('');
     setModalCm('0');
+    setModalQty(IS_WHOLESALE ? 3 : 1);
     setModalName('');
     setModalPayment('');
     setModalFullName('');
@@ -870,6 +872,13 @@ export default function App() {
     String(p?.price_wholesale || '').split('/').map((s: string) => s.trim()).filter(Boolean);
   const priceOf = (p: any) =>
     IS_WHOLESALE ? (wholesaleTiers(p)[0] || '') : (p?.price || '');
+  // Precio unitario según la cantidad: 1-10, 11-20, 21-30 pares
+  const wholesaleUnitPrice = (p: any, qty: number) => {
+    const tiers = wholesaleTiers(p);
+    if (!tiers.length) return '';
+    const tramo = qty <= 10 ? 0 : qty <= 20 ? 1 : 2;
+    return tiers[Math.min(tramo, tiers.length - 1)];
+  };
 
   const handleNextPair = () => {
     if (!modalColor || !modalSize) {
@@ -927,7 +936,9 @@ export default function App() {
 📏 *CM plantilla:* ${val(modalCm)}
 `;
     } else {
-      totalValue = priceOf(selectedProduct);
+      const unitario = IS_WHOLESALE ? wholesaleUnitPrice(selectedProduct, modalQty) : '';
+      const totalMayorista = unitario ? Number(unitario) * modalQty : 0;
+      totalValue = unitario || priceOf(selectedProduct);
       productDetails = `
 🔗 *Link:* ${getShareImage(selectedProduct, modalColor)}
 
@@ -935,7 +946,7 @@ export default function App() {
 🎨 *Color:* ${val(modalColor)}
 📏 *Numero:* ${val(modalSize)} BR
 📏 *CM plantilla:* ${val(modalCm)}
-${IS_WHOLESALE && wholesaleTiers(selectedProduct).length > 1
+${IS_WHOLESALE ? `📦 *Cantidad:* ${modalQty} ${modalQty === 1 ? 'par' : 'pares'}\n` : ''}${unitario ? `💰 *Precio unitario:* $${unitario}\n💰 *Total:* $${totalMayorista}\n` : ''}${IS_WHOLESALE && wholesaleTiers(selectedProduct).length > 1
   ? `💰 *Escala por cantidad:* ${wholesaleTiers(selectedProduct).map((v: string, i: number) => `${['1-10', '11-20', '21-30'][i]} $${v}`).join(' · ')}`
   : ''}
 `;
@@ -949,14 +960,12 @@ ${isRivera ? '' : `🚚 *Agencia:* ${val(modalAgency)}\n`}
 ${shippingData}
 
 💳 *Método de Pago:* ${val(modalPayment)}
-
-💰 *${IS_WHOLESALE ? 'Precio unitario' : 'Valor total a pagar'}:* $${totalValue}
-
+${IS_WHOLESALE ? '' : `\n💰 *Valor total a pagar:* $${totalValue}\n`}
 ¿Cómo procedo con el pago?`;
   }, [
     modalDept, modalAgency, modalPayment, modalFullName, modalNeighborhood,
     modalAddress, modalID, modalPhone, modalPickupLocation,
-    promoFirstPair, selectedPromo, selectedProduct, modalColor, modalSize, modalCm,
+    promoFirstPair, selectedPromo, selectedProduct, modalColor, modalSize, modalCm, modalQty,
   ]);
 
   const handleWhatsAppOrder = () => {
@@ -1140,13 +1149,25 @@ ${shippingData}
                   </span>
                 </div>
                 {!selectedPromo && (priceOf(selectedProduct) || IS_WHOLESALE) && (
-                  <div className="mt-8 flex items-center justify-between gap-4 px-5 py-3 rounded-xl bg-[#F2E4DC] border border-[#E8D2C6]">
-                    <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
-                      {IS_WHOLESALE ? 'Precio mayorista' : 'Precio'}
-                    </span>
-                    <span className="text-2xl font-black text-emerald-600">
-                      {priceOf(selectedProduct) ? `${IS_WHOLESALE ? 'desde ' : ''}$${priceOf(selectedProduct)}` : 'Consultar'}
-                    </span>
+                  <div className="mt-8 px-5 py-3 rounded-xl bg-[#F2E4DC] border border-[#E8D2C6] space-y-1">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
+                        {IS_WHOLESALE ? `Precio por par (${modalQty} ${modalQty === 1 ? 'par' : 'pares'})` : 'Precio'}
+                      </span>
+                      <span className="text-2xl font-black text-emerald-600">
+                        {(IS_WHOLESALE ? wholesaleUnitPrice(selectedProduct, modalQty) : priceOf(selectedProduct))
+                          ? `$${IS_WHOLESALE ? wholesaleUnitPrice(selectedProduct, modalQty) : priceOf(selectedProduct)}`
+                          : 'Consultar'}
+                      </span>
+                    </div>
+                    {IS_WHOLESALE && wholesaleUnitPrice(selectedProduct, modalQty) && (
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Total del pedido</span>
+                        <span className="text-lg font-black text-text-primary">
+                          ${Number(wholesaleUnitPrice(selectedProduct, modalQty)) * modalQty}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
                 {IS_WHOLESALE && !selectedPromo && wholesaleTiers(selectedProduct).length > 1 && (
@@ -1207,6 +1228,44 @@ ${shippingData}
                     </button>
                   )}
                 </div>
+
+              {/* Cantidad de pares (mayorista) */}
+              {IS_WHOLESALE && !selectedPromo && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
+                    <ShoppingBag size={14} />
+                    <span>Cantidad de pares</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      aria-label="Restar un par"
+                      onClick={() => setModalQty(q => Math.max(1, q - 1))}
+                      className="w-14 h-14 rounded-lg border-2 border-border-main bg-bg-primary text-2xl font-black text-text-secondary hover:border-brand-pink transition-all"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      value={modalQty}
+                      onChange={e => setModalQty(Math.max(1, Math.min(200, parseInt(e.target.value) || 1)))}
+                      className="w-24 h-14 text-center rounded-lg border-2 border-brand-pink bg-bg-primary text-xl font-black text-text-primary outline-none"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Sumar un par"
+                      onClick={() => setModalQty(q => Math.min(200, q + 1))}
+                      className="w-14 h-14 rounded-lg border-2 border-border-main bg-bg-primary text-2xl font-black text-text-secondary hover:border-brand-pink transition-all"
+                    >
+                      +
+                    </button>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary leading-tight">
+                      Mínimo 3 pares<br />en la primera compra
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Destination Selection */}
               {(!selectedPromo || promoFirstPair) && (
