@@ -1493,7 +1493,6 @@ ${shippingData}
                   </span>
                 )}
               </h1>
-              {isAdminPanel && <ConsoleButton open={consoleOpen} onToggle={() => setConsoleOpen(o => !o)} />}
             </div>
             
             <div className="flex items-center gap-8">
@@ -2358,8 +2357,13 @@ ${shippingData}
             </>
             )}
           </div>
-          <div className="text-[10px] text-text-secondary uppercase tracking-widest pt-4 border-t border-border-main/50">
+          <div className="relative flex items-center justify-center text-[10px] text-text-secondary uppercase tracking-widest pt-4 border-t border-border-main/50">
             BELLA URUGUAY
+            {isAdminPanel && (
+              <div className="absolute right-0">
+                <ConsoleButton open={consoleOpen} onToggle={() => setConsoleOpen(o => !o)} />
+              </div>
+            )}
           </div>
         </div>
       </footer>
