@@ -1180,6 +1180,44 @@ ${IS_WHOLESALE ? '' : `\n💰 *Valor total a pagar:* $${totalValue}\n`}
                     ))}
                   </div>
                 )}
+
+                {/* Cantidad de pares (mayorista) */}
+                {IS_WHOLESALE && !selectedPromo && (
+                  <div className="mt-6 space-y-3">
+                    <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
+                      <ShoppingBag size={14} />
+                      <span>Cantidad de pares</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        aria-label="Restar un par"
+                        onClick={() => setModalQty(q => Math.max(1, q - 1))}
+                        className="w-14 h-14 rounded-lg border-2 border-border-main bg-bg-primary text-2xl font-black text-text-secondary hover:border-brand-pink transition-all"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min={1}
+                        value={modalQty}
+                        onChange={e => setModalQty(Math.max(1, Math.min(200, parseInt(e.target.value) || 1)))}
+                        className="w-24 h-14 text-center rounded-lg border-2 border-brand-pink bg-bg-primary text-xl font-black text-text-primary outline-none"
+                      />
+                      <button
+                        type="button"
+                        aria-label="Sumar un par"
+                        onClick={() => setModalQty(q => Math.min(200, q + 1))}
+                        className="w-14 h-14 rounded-lg border-2 border-border-main bg-bg-primary text-2xl font-black text-text-secondary hover:border-brand-pink transition-all"
+                      >
+                        +
+                      </button>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary leading-tight">
+                        Mínimo 3 pares<br />en la primera compra
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Guía de talles */}
@@ -1228,44 +1266,6 @@ ${IS_WHOLESALE ? '' : `\n💰 *Valor total a pagar:* $${totalValue}\n`}
                     </button>
                   )}
                 </div>
-
-              {/* Cantidad de pares (mayorista) */}
-              {IS_WHOLESALE && !selectedPromo && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-text-secondary uppercase text-[10px] font-black tracking-widest">
-                    <ShoppingBag size={14} />
-                    <span>Cantidad de pares</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      aria-label="Restar un par"
-                      onClick={() => setModalQty(q => Math.max(1, q - 1))}
-                      className="w-14 h-14 rounded-lg border-2 border-border-main bg-bg-primary text-2xl font-black text-text-secondary hover:border-brand-pink transition-all"
-                    >
-                      −
-                    </button>
-                    <input
-                      type="number"
-                      min={1}
-                      value={modalQty}
-                      onChange={e => setModalQty(Math.max(1, Math.min(200, parseInt(e.target.value) || 1)))}
-                      className="w-24 h-14 text-center rounded-lg border-2 border-brand-pink bg-bg-primary text-xl font-black text-text-primary outline-none"
-                    />
-                    <button
-                      type="button"
-                      aria-label="Sumar un par"
-                      onClick={() => setModalQty(q => Math.min(200, q + 1))}
-                      className="w-14 h-14 rounded-lg border-2 border-border-main bg-bg-primary text-2xl font-black text-text-secondary hover:border-brand-pink transition-all"
-                    >
-                      +
-                    </button>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary leading-tight">
-                      Mínimo 3 pares<br />en la primera compra
-                    </span>
-                  </div>
-                </div>
-              )}
 
               {/* Destination Selection */}
               {(!selectedPromo || promoFirstPair) && (
