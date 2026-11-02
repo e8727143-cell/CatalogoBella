@@ -445,20 +445,50 @@ export default function App() {
   };
 
   const categories = ['Todos', 'Femenino', 'Masculino', 'Infantil', 'Unisex', 'Deportivos', 'Chanclas'];
-  const catRowRef = useRef<HTMLDivElement>(null);
 
-  // Las flechas mueven la categoría activa y la barra se acompaña sola
+  const categoryLooks: Record<string, { bar: string; stripe: string; halo: string }> = {
+    Todos: {
+      bar: "bg-gradient-to-r from-brand-pink/35 via-brand-pink/12 to-transparent border-brand-pink/60",
+      stripe: "bg-brand-pink",
+      halo: "bg-brand-pink/40",
+    },
+    Femenino: {
+      bar: "bg-white border-rose-200",
+      stripe: "bg-rose-400",
+      halo: "bg-rose-200/70",
+    },
+    Masculino: {
+      bar: "bg-gradient-to-r from-brand-beige to-[#FBFBF0] border-[#E0D6AE]",
+      stripe: "bg-[#C9B96A]",
+      halo: "bg-[#E8DFB8]/80",
+    },
+    Infantil: {
+      bar: "bg-gradient-to-r from-amber-100 to-amber-50 border-amber-300 border-dashed",
+      stripe: "bg-amber-400",
+      halo: "bg-amber-200/80",
+    },
+    Unisex: {
+      bar: "bg-gradient-to-r from-[#FFE7EE] to-white border-brand-pink/40",
+      stripe: "bg-brand-pink/80",
+      halo: "bg-brand-pink/30",
+    },
+    Deportivos: {
+      bar: "bg-gradient-to-r from-sky-100 to-sky-50 border-sky-300",
+      stripe: "bg-sky-400",
+      halo: "bg-sky-200/80",
+    },
+    Chanclas: {
+      bar: "bg-gradient-to-r from-violet-100 to-violet-50 border-violet-300",
+      stripe: "bg-violet-400",
+      halo: "bg-violet-200/80",
+    },
+  };
+
+  // Las flechas mueven la categoría activa, una por vez
   const moverCategoria = (dir: number) => {
     const i = categories.indexOf(selectedCategory);
     setSelectedCategory(categories[(i + dir + categories.length) % categories.length]);
   };
-
-  useEffect(() => {
-    const row = catRowRef.current;
-    const chip = row?.querySelector<HTMLElement>(`[data-cat="${selectedCategory}"]`);
-    if (!row || !chip) return;
-    row.scrollTo({ left: Math.max(0, chip.offsetLeft - row.clientWidth / 2 + chip.clientWidth / 2), behavior: 'smooth' });
-  }, [selectedCategory]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
@@ -1478,6 +1508,7 @@ ${shippingData}
   }
 
   const isAdminPanel = activeTab === 'admin' && isAdminAuthenticated;
+  const activeLook = categoryLooks[selectedCategory] ?? categoryLooks.Todos;
 
   return (
     <ErrorBoundary>
@@ -1669,7 +1700,8 @@ ${shippingData}
             >
               {/* Filters */}
               {!searchQuery && (
-              <div className="flex items-center gap-2">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
                 <button
                   onClick={() => moverCategoria(-1)}
                   aria-label="Categoría anterior"
@@ -1677,86 +1709,22 @@ ${shippingData}
                 >
                   <ChevronLeft size={18} />
                 </button>
-                <div ref={catRowRef} className="relative flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-                {categories.map((cat) => {
-                  const active = selectedCategory === cat;
-                  const look = {
-                    Todos: {
-                      bar: "bg-gradient-to-r from-brand-pink/35 via-brand-pink/12 to-transparent border-brand-pink/60",
-                      stripe: "bg-brand-pink",
-                      halo: "bg-brand-pink/40",
-                    },
-                    Femenino: {
-                      bar: "bg-white border-rose-200",
-                      stripe: "bg-rose-400",
-                      halo: "bg-rose-200/70",
-                    },
-                    Masculino: {
-                      bar: "bg-gradient-to-r from-brand-beige to-[#FBFBF0] border-[#E0D6AE]",
-                      stripe: "bg-[#C9B96A]",
-                      halo: "bg-[#E8DFB8]/80",
-                    },
-                    Infantil: {
-                      bar: "bg-gradient-to-r from-amber-100 to-amber-50 border-amber-300 border-dashed",
-                      stripe: "bg-amber-400",
-                      halo: "bg-amber-200/80",
-                    },
-                    Unisex: {
-                      bar: "bg-gradient-to-r from-[#FFE7EE] to-white border-brand-pink/40",
-                      stripe: "bg-brand-pink/80",
-                      halo: "bg-brand-pink/30",
-                    },
-                    Deportivos: {
-                      bar: "bg-gradient-to-r from-sky-100 to-sky-50 border-sky-300",
-                      stripe: "bg-sky-400",
-                      halo: "bg-sky-200/80",
-                    },
-                    Chanclas: {
-                      bar: "bg-gradient-to-r from-violet-100 to-violet-50 border-violet-300",
-                      stripe: "bg-violet-400",
-                      halo: "bg-violet-200/80",
-                    },
-                  }[cat] ?? { bar: "bg-bg-secondary border-border-main", stripe: "bg-brand-pink", halo: "bg-transparent" };
-
-                  return (
-                    <button
-                      key={cat}
-                      data-cat={cat}
-                      onClick={() => setSelectedCategory(cat)}
-                      className={cn(
-                        "group relative shrink-0 flex items-center justify-center px-4 py-2.5 rounded-xl border overflow-hidden text-center transition-all hover:shadow-md hover:-translate-y-px shadow-sm",
-                        look.bar
-                      )}
-                    >
-                      <span className={cn("absolute inset-y-0 left-0 w-1.5", look.stripe)} />
-                      <span className={cn("absolute -right-8 -top-10 w-28 h-28 rounded-full blur-2xl opacity-70 transition-opacity group-hover:opacity-100", look.halo)} />
-                      {active && (
-                        <motion.span
-                          layoutId="category-frame"
-                          className="absolute inset-0 rounded-xl border-2 border-brand-pink shadow-[0_0_0_4px_rgba(255,182,193,0.18)]"
-                          transition={{ type: "spring", stiffness: 520, damping: 42 }}
-                        />
-                      )}
-                      <span className={cn(
-                        "relative text-xs font-black uppercase tracking-widest transition-colors",
-                        active ? "text-text-primary" : "text-text-primary/75 group-hover:text-text-primary"
-                      )}>
-                        {cat}
-                      </span>
-                    </button>
-                  );
-                })}
-                {selectedPromo && (
-                  <button
-                    onClick={() => setSelectedPromo(null)}
-                    className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-brand-pink/40 text-brand-pink hover:bg-brand-pink/5 transition-colors"
-                  >
-                    <span className="text-xs font-black uppercase tracking-widest whitespace-nowrap">
-                      Promo: {PROMOS.find(p => p.id === selectedPromo)?.label}
-                    </span>
-                    <X size={14} />
-                  </button>
-                )}
+                <div
+                  className={cn(
+                    "relative flex flex-1 items-center justify-center px-4 py-2.5 rounded-xl border overflow-hidden shadow-sm",
+                    activeLook.bar
+                  )}
+                >
+                  <span className={cn("absolute inset-y-0 left-0 w-1.5", activeLook.stripe)} />
+                  <span className={cn("absolute -right-8 -top-10 w-28 h-28 rounded-full blur-2xl opacity-70", activeLook.halo)} />
+                  <motion.span
+                    layoutId="category-frame"
+                    className="absolute inset-0 rounded-xl border-2 border-brand-pink shadow-[0_0_0_4px_rgba(255,182,193,0.18)]"
+                    transition={{ type: "spring", stiffness: 520, damping: 42 }}
+                  />
+                  <span className="relative text-xs font-black uppercase tracking-widest text-text-primary">
+                    {selectedCategory}
+                  </span>
                 </div>
                 <button
                   onClick={() => moverCategoria(1)}
@@ -1765,6 +1733,32 @@ ${shippingData}
                 >
                   <ChevronRight size={18} />
                 </button>
+              </div>
+              <div className="flex justify-center gap-1.5 pt-2">
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    aria-label={cat}
+                    title={cat}
+                    className={cn(
+                      "h-1.5 rounded-full transition-all",
+                      cat === selectedCategory ? "w-5 bg-brand-pink" : "w-1.5 bg-border-main hover:bg-brand-pink/50"
+                    )}
+                  />
+                ))}
+              </div>
+              {selectedPromo && (
+                <button
+                  onClick={() => setSelectedPromo(null)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-brand-pink/40 text-brand-pink hover:bg-brand-pink/5 transition-colors"
+                >
+                  <span className="text-xs font-black uppercase tracking-widest whitespace-nowrap">
+                    Promo: {PROMOS.find(p => p.id === selectedPromo)?.label}
+                  </span>
+                  <X size={14} />
+                </button>
+              )}
               </div>
               )}
 
@@ -2484,13 +2478,6 @@ ${shippingData}
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: var(--color-brand-300);
-        }
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
         }
       `}</style>
 
