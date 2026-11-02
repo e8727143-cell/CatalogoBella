@@ -45,6 +45,7 @@ import { logInfo, logOk, logWarn } from './lib/logger';
 const IS_WHOLESALE = /\/mayorista\/?$/i.test(window.location.pathname);
 // Logo real del catálogo (Cloudinary)
 const LOGO_URL = 'https://res.cloudinary.com/nudnxkcm/image/upload/v1793583157/logo_BELLA_png.png';
+const LOGO_MAYORISTA_URL = 'https://res.cloudinary.com/nudnxkcm/image/upload/v1793584857/logo_catalogo_BELLA_MAYORISTA_png.png';
 
 // --- Components ---
 
@@ -995,7 +996,7 @@ ${shippingData}
                 <ChevronLeft size={16} />
                 <span className="text-[10px] font-black uppercase tracking-widest">Volver</span>
               </button>
-              <img src={LOGO_URL} alt={STORE_NAME} className="h-7 w-auto object-contain" />
+              <img src={IS_WHOLESALE ? LOGO_MAYORISTA_URL : LOGO_URL} alt={IS_WHOLESALE ? `${STORE_NAME} Mayorista` : STORE_NAME} className="h-7 w-auto object-contain" />
             </div>
           </div>
         </header>
@@ -1537,11 +1538,10 @@ ${shippingData}
                 ) : (
                   <span className="inline-flex items-center gap-2">
                     <img
-                      src={LOGO_URL}
-                      alt={STORE_NAME}
-                      className="h-8 sm:h-10 w-auto object-contain"
+                      src={IS_WHOLESALE ? LOGO_MAYORISTA_URL : LOGO_URL}
+                      alt={IS_WHOLESALE ? `${STORE_NAME} Mayorista` : STORE_NAME}
+                      className={cn("w-auto object-contain", IS_WHOLESALE ? "h-10 sm:h-12" : "h-8 sm:h-10")}
                     />
-                    {IS_WHOLESALE && <span className="font-black uppercase tracking-widest">Mayorista</span>}
                   </span>
                 )}
               </h1>
@@ -1623,13 +1623,6 @@ ${shippingData}
         {/* Hero / Promos */}
         {!isAdminPanel && !IS_WHOLESALE && (
         <section className="mb-12">
-          <div className="text-center mb-6">
-            <p className="text-sm sm:text-lg font-black text-brand-pink uppercase tracking-tighter leading-tight">
-              Haz clic y selecciona
-              <br />
-              tu combo favorito.
-            </p>
-          </div>
           <div className="grid grid-cols-1 gap-8">
             {PROMOS.filter(p => !p.hideBanner).map((promo) => {
               return (
@@ -1673,7 +1666,28 @@ ${shippingData}
                       />
                     )}
                   </div>
-                  
+
+                  {/* Etiqueta sobre el video */}
+                  {selectedPromo !== promo.id && (
+                    <span className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 bg-brand-pink px-3 py-2 text-white">
+                      <motion.span
+                        animate={{ y: [0, 4, 0] }}
+                        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        <ChevronDown size={16} />
+                      </motion.span>
+                      <span className="text-[9px] sm:text-xs font-black uppercase tracking-[0.12em] text-center leading-tight">
+                        Haz clic y selecciona tu combo favorito
+                      </span>
+                      <motion.span
+                        animate={{ y: [0, 4, 0] }}
+                        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        <ChevronDown size={16} />
+                      </motion.span>
+                    </span>
+                  )}
+
                   {/* Selection Overlay */}
                   {selectedPromo === promo.id && (
                     <div className="absolute inset-0 bg-brand-pink/10 backdrop-blur-[1px] flex items-center justify-center">
@@ -1708,8 +1722,8 @@ ${shippingData}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ type: "spring", stiffness: 320, damping: 26 }}
                     onClick={() => setSelectedPromo(null)}
-                    aria-label="Quitar la promo seleccionada"
-                    className="relative w-full overflow-hidden rounded-2xl border border-[#8a6414]/30 px-4 py-4 sm:px-5 text-left shadow-[0_18px_40px_-18px_rgba(180,130,20,0.75)]"
+                    aria-label="Quitar la promo y volver a las categorías"
+                    className="relative w-full overflow-hidden rounded-2xl border border-[#8a6414]/30 px-3 py-4 sm:px-5 sm:py-5 shadow-[0_18px_40px_-18px_rgba(180,130,20,0.75)]"
                     style={{ background: 'linear-gradient(100deg,#FFF6D0 0%,#F7D774 16%,#E8B93F 38%,#FBEBAB 55%,#D9A32C 76%,#F3D27C 100%)' }}
                   >
                     <motion.span
@@ -1719,29 +1733,17 @@ ${shippingData}
                       animate={{ x: '340%' }}
                       transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 1.8, ease: 'easeInOut' }}
                     />
-                    <span className="relative flex items-center gap-3 sm:gap-4">
-                      <span className="shrink-0 flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#3B2A05] text-[#F7D774] shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
-                        <Star size={20} className="fill-current" />
+                    <span className="relative flex items-center justify-center gap-2 sm:gap-4">
+                      <Star size={16} className="shrink-0 fill-current text-[#8A6414] drop-shadow-[0_1px_0_rgba(255,255,255,0.55)]" />
+                      <span className="text-xs sm:text-xl font-black uppercase tracking-[0.1em] sm:tracking-[0.14em] text-[#2E2004] text-center whitespace-nowrap leading-none">
+                        Elige tus modelos
                       </span>
-                      <span className="flex-1 min-w-0">
-                        <span className="block text-[9px] sm:text-[10px] font-black uppercase tracking-[0.35em] text-[#7A5A12]">
-                          Promo {PROMOS.find(p => p.id === selectedPromo)?.label}
-                        </span>
-                        <span className="block text-base sm:text-xl font-black uppercase tracking-tight text-[#2E2004] leading-tight">
-                          Elige tus modelos
-                        </span>
-                      </span>
-                      <span aria-hidden className="hidden sm:flex items-center gap-1 text-[#2E2004]/30 shrink-0">
-                        <Star size={11} className="fill-current" />
-                        <Star size={11} className="fill-current" />
-                        <Star size={11} className="fill-current" />
-                      </span>
-                      <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-[#2E2004]/10 text-[#2E2004]">
-                        <X size={14} />
-                      </span>
+                      <Star size={16} className="shrink-0 fill-current text-[#8A6414] drop-shadow-[0_1px_0_rgba(255,255,255,0.55)]" />
                     </span>
                   </motion.button>
                 )}
+                {!selectedPromo && (
+                <>
                 <div className="flex items-center gap-2">
                 <button
                   onClick={() => moverCategoria(-1)}
@@ -1789,6 +1791,8 @@ ${shippingData}
                   />
                 ))}
               </div>
+                </>
+                )}
               </div>
               )}
 
