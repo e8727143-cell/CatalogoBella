@@ -42,6 +42,8 @@ import { logInfo, logOk, logWarn } from './lib/logger';
 
 // /mayorista abre el mismo catálogo con la lista de precios mayorista
 const IS_WHOLESALE = /\/mayorista\/?$/i.test(window.location.pathname);
+// Logo real del catálogo (Cloudinary)
+const LOGO_URL = 'https://res.cloudinary.com/nudnxkcm/image/upload/v1793583157/logo_BELLA_png.png';
 
 // --- Components ---
 
@@ -948,7 +950,7 @@ ${shippingData}
                 <ChevronLeft size={16} />
                 <span className="text-[10px] font-black uppercase tracking-widest">Volver</span>
               </button>
-              <h1 className="text-xl font-bold tracking-tighter text-brand-pink">{STORE_NAME}</h1>
+              <img src={LOGO_URL} alt={STORE_NAME} className="h-7 w-auto object-contain" />
             </div>
           </div>
         </header>
@@ -1469,8 +1471,8 @@ ${shippingData}
       {/* Header */}
       <header className="sticky top-0 z-50 bg-bg-primary/80 backdrop-blur-md border-b border-border-main">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex justify-between items-center h-16">
-            <div className={cn("flex items-center gap-2", isAdminPanel && "absolute left-1/2 -translate-x-1/2")}>
+          <div className="relative flex items-center h-16">
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
               <h1 
                 className="text-2xl font-bold tracking-tighter text-brand-pink cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap"
                 onClick={() => {
@@ -1487,15 +1489,19 @@ ${shippingData}
                     <span className="font-black uppercase tracking-tight text-base sm:text-2xl">Administra tus productos</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-baseline gap-2">
-                    <span>{STORE_NAME}</span>
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={LOGO_URL}
+                      alt={STORE_NAME}
+                      className="h-8 sm:h-10 w-auto object-contain"
+                    />
                     {IS_WHOLESALE && <span className="font-black uppercase tracking-widest">Mayorista</span>}
                   </span>
                 )}
               </h1>
             </div>
             
-            <div className="flex items-center gap-8">
+            <div className="ml-auto flex items-center gap-8">
               <nav className="hidden md:flex space-x-8">
                 <button 
                   onClick={() => setActiveTab('catalog')}
