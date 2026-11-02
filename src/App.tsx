@@ -577,6 +577,30 @@ export default function App() {
     }
   };
 
+  // Mueve la misma fila al otro catálogo (wholesale_only = catálogo mayorista)
+  const moverDeCatalogo = async (product: any, destino: 'retail' | 'wholesale') => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .update({ wholesale_only: destino === 'wholesale' })
+        .eq('id', product.id)
+        .select();
+
+      if (error) throw error;
+
+      const fila = data?.[0];
+      if (fila) setProducts(prev => prev.map(p => (p.id === fila.id ? fila : p)));
+      setNotification({
+        message: destino === 'wholesale' ? 'Movido al catálogo mayorista' : 'Devuelto al catálogo BELLA',
+        type: 'success'
+      });
+      logOk('Producto movido de catálogo', { id: product.id, destino });
+    } catch (error) {
+      console.error('Error moviendo producto:', error);
+      setNotification({ message: 'No se pudo mover el producto', type: 'error' });
+    }
+  };
+
   const [newProduct, setNewProduct] = useState({
     name: '',
     category: 'Femenino',
@@ -2392,7 +2416,7 @@ ${IS_WHOLESALE ? '' : `\n💰 *Valor total a pagar:* $${totalValue}\n`}
                   {products
                     .filter(product => catalogOf(product) === adminCatalog)
                     .map(product => (
-                    <div key={product.id} className="bg-bg-primary p-4 rounded-xl border border-border-main flex items-center gap-4 shadow-sm hover:border-brand-pink/30 transition-colors">
+                    <div key={product.id} className="bg-bg-primary p-4 rounded-xl border border-border-main flex flex-wrap items-center gap-4 shadow-sm hover:border-brand-pink/30 transition-colors">
                       <img src={getProductImage(product, product.colors?.[0])} alt="" loading="lazy" className="w-16 h-16 object-cover rounded-lg" referrerPolicy="no-referrer" />
                       <div className="flex-grow">
                         <h4 className="font-bold text-text-primary text-sm sm:text-base">
@@ -2422,6 +2446,32 @@ ${IS_WHOLESALE ? '' : `\n💰 *Valor total a pagar:* $${totalValue}\n`}
                         >
                           <Trash2 size={20} />
                         </button>
+                      </div>
+
+                      {/* Mover entre catálogos */}
+                      <div className="w-full pt-2 border-t border-border-main/50">
+                        {catalogOf(product) === 'wholesale' ? (
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                              <CheckCircle2 size={14} />
+                              Incluido en el catálogo mayorista
+                            </span>
+                            <button
+                              onClick={() => moverDeCatalogo(product, 'retail')}
+                              className="text-[10px] font-black uppercase tracking-widest text-text-secondary underline hover:text-brand-pink transition-colors"
+                            >
+                              Devolver al catálogo BELLA
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => moverDeCatalogo(product, 'wholesale')}
+                            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-pink hover:opacity-70 transition-opacity"
+                          >
+                            <ArrowRight size={14} />
+                            Mover al catálogo mayorista
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
