@@ -562,18 +562,30 @@ export default function App() {
         productData.wholesale_only = newProduct.wholesale_only;
       }
 
-      if (editingProduct) {
-        const { error } = await supabase
-          .from('products')
-          .update(productData)
-          .eq('id', editingProduct.id);
-        if (error) throw error;
+      // Si las columnas mayoristas todavía no existen, se guarda sin ellas en vez de fallar
+      let savingPayload: any = productData;
+      let res = editingProduct
+        ? await supabase.from('products').update(savingPayload).eq('id', editingProduct.id)
+        : await supabase.from('products').insert([savingPayload]);
+
+      let sinColumnasMayoristas = false;
+      if (res.error?.code === '42703') {
+        const { price_wholesale, wholesale_only, ...rest } = productData;
+        void price_wholesale; void wholesale_only;
+        savingPayload = rest;
+        sinColumnasMayoristas = true;
+        res = editingProduct
+          ? await supabase.from('products').update(savingPayload).eq('id', editingProduct.id)
+          : await supabase.from('products').insert([savingPayload]);
+      }
+
+      if (res.error) throw res.error;
+
+      if (sinColumnasMayoristas) {
+        setNotification({ message: 'Producto guardado, pero el precio mayorista no: falta crear la columna en Supabase', type: 'error' });
+      } else if (editingProduct) {
         setNotification({ message: 'Producto actualizado con éxito', type: 'success' });
       } else {
-        const { error } = await supabase
-          .from('products')
-          .insert([productData]);
-        if (error) throw error;
         setNotification({ message: 'Producto creado con éxito', type: 'success' });
       }
       
