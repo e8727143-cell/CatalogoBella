@@ -37,9 +37,13 @@ import {
   SHIPPING_AGENCIES 
 } from './constants';
 import { supabase } from './lib/supabase';
+import { DevConsole } from './components/DevConsole';
+import { logInfo, logOk, logWarn } from './lib/logger';
 
 // /mayorista abre el mismo catálogo con la lista de precios mayorista
 const IS_WHOLESALE = /\/mayorista\/?$/i.test(window.location.pathname);
+// ?debug=1 muestra la consola de registro también fuera del panel
+const DEBUG = new URLSearchParams(window.location.search).has('debug');
 
 // --- Components ---
 
@@ -351,6 +355,7 @@ export default function App() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
+        logInfo('Cargando catálogo');
         const { data, error } = await supabase
           .from('products')
           .select('*')
@@ -358,6 +363,7 @@ export default function App() {
 
         if (error) throw error;
         setProducts(data || []);
+        logOk(`Catálogo cargado: ${(data || []).length} productos`);
       } catch (error) {
         console.error('Error fetching products:', error);
       } finally {
@@ -395,6 +401,10 @@ export default function App() {
     meta.content = 'noindex,follow';
     document.head.appendChild(meta);
   }, []);
+
+  useEffect(() => {
+    logInfo(`Pestaña: ${activeTab}`, { catálogo: adminCatalog });
+  }, [activeTab, adminCatalog]);
 
   const cmToSize = (cmStr: string) => {    const cm = parseFloat(cmStr);
     if (isNaN(cm)) return '36';
@@ -468,6 +478,7 @@ export default function App() {
   };
 
   const handleAdminLogin = async () => {
+    logInfo('Intento de acceso al panel');
     if (!supabase) {
       setNotification({ message: 'Supabase no está configurado', type: 'error' });
       return;
@@ -493,6 +504,7 @@ export default function App() {
     setActiveTab('admin');
     setAdminCatalog(IS_WHOLESALE ? 'wholesale' : 'retail');
     setAdminPassword('');
+    logOk('Sesión de administración iniciada');
   };
 
   const handleDeleteProduct = async (id: number) => {
@@ -505,6 +517,7 @@ export default function App() {
       if (error) throw error;
       setConfirmDelete(null);
       setNotification({ message: 'Producto eliminado correctamente', type: 'success' });
+      logOk('Producto eliminado', { id });
     } catch (error) {
       console.error('Error deleting product:', error);
       setNotification({ message: 'Error al eliminar el producto', type: 'error' });
@@ -525,6 +538,7 @@ export default function App() {
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    logInfo(`Guardar producto (${editingProduct ? 'edición' : 'nuevo'})`, { nombre: newProduct.name, catálogo: adminCatalog });
     if (newProduct.images.length === 0) {
       setNotification({ message: 'Por favor, sube al menos una imagen para el producto', type: 'error' });
       return;
@@ -582,11 +596,15 @@ export default function App() {
       if (res.error) throw res.error;
 
       if (sinColumnasMayoristas) {
+        logWarn('Guardado sin precio mayorista: faltan columnas en Supabase');
         setNotification({ message: 'Producto guardado, pero el precio mayorista no: falta crear la columna en Supabase', type: 'error' });
-      } else if (editingProduct) {
-        setNotification({ message: 'Producto actualizado con éxito', type: 'success' });
       } else {
-        setNotification({ message: 'Producto creado con éxito', type: 'success' });
+        logOk(editingProduct ? 'Producto actualizado' : 'Producto creado', { nombre: newProduct.name });
+        if (editingProduct) {
+          setNotification({ message: 'Producto actualizado con éxito', type: 'success' });
+        } else {
+          setNotification({ message: 'Producto creado con éxito', type: 'success' });
+        }
       }
       
       cancelEdit();
@@ -902,6 +920,7 @@ ${shippingData}
       return;
     }
 
+    logInfo('Pedido enviado a WhatsApp', { producto: selectedProduct.name, total: orderMessage.match(/Valor total a pagar:\*\* \$(\d+)/)?.[1] ?? '—' });
     window.open(`https://wa.me/59895149966?text=${encodeURIComponent(orderMessage)}`, '_blank');
     setPromoFirstPair(null);
   };
@@ -2412,6 +2431,8 @@ ${shippingData}
           background: var(--color-brand-300);
         }
       `}</style>
+
+      <DevConsole visible={isAdminPanel || DEBUG} />
     </div>
     </ErrorBoundary>
   );
