@@ -43,7 +43,11 @@ import { logInfo, logOk, logWarn } from './lib/logger';
 
 // /mayorista abre el mismo catálogo con la lista de precios mayorista
 const IS_WHOLESALE = /\/mayorista\/?$/i.test(window.location.pathname);
-// Logo real del catálogo (Cloudinary)
+// Cada fila pertenece a un catálogo: 'retail' o 'wholesale'. Borrar una no toca la otra.
+const catalogOf = (p: any): 'retail' | 'wholesale' =>
+  p?.catalog === 'wholesale' || p?.wholesale_only ? 'wholesale' : 'retail';
+
+// Logos (Cloudinary)
 const LOGO_URL = 'https://res.cloudinary.com/nudnxkcm/image/upload/v1793583157/logo_BELLA_png.png';
 const LOGO_MAYORISTA_URL = 'https://res.cloudinary.com/nudnxkcm/image/upload/v1793584857/logo_catalogo_BELLA_MAYORISTA_png.png';
 
@@ -497,7 +501,7 @@ export default function App() {
       const matchesCategory = selectedCategory === 'Todos' || product.category === selectedCategory;
       const matchesPromo = !selectedPromo || product.promo === selectedPromo;
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesChannel = IS_WHOLESALE ? true : !product.wholesale_only;
+      const matchesChannel = catalogOf(product) === (IS_WHOLESALE ? 'wholesale' : 'retail');
       return matchesCategory && matchesPromo && matchesSearch && matchesChannel;
     });
   }, [products, selectedCategory, selectedPromo, searchQuery]);
@@ -618,29 +622,35 @@ export default function App() {
       };
       // Solo se envía si hay valor: así el admin sigue guardando aunque la columna no exista todavía
       if (newProduct.price_wholesale) productData.price_wholesale = newProduct.price_wholesale;
-      // Se manda solo cuando cambia, para que el catálogo normal siga guardando sin la columna
-      if (newProduct.wholesale_only !== !!(editingProduct && editingProduct.wholesale_only)) {
-        productData.wholesale_only = newProduct.wholesale_only;
-      }
+      // La pestaña activa define a qué catálogo pertenece la fila (wholesale_only = catálogo mayorista)
+      productData.wholesale_only = adminCatalog === 'wholesale';
 
-      // Si las columnas mayoristas todavía no existen, se guarda sin ellas en vez de fallar
+      // Si las columnas nuevas todavía no existen, se guarda sin ellas en vez de fallar
       let savingPayload: any = productData;
       let res = editingProduct
-        ? await supabase.from('products').update(savingPayload).eq('id', editingProduct.id)
-        : await supabase.from('products').insert([savingPayload]);
+        ? await supabase.from('products').update(savingPayload).eq('id', editingProduct.id).select()
+        : await supabase.from('products').insert([savingPayload]).select();
 
       let sinColumnasMayoristas = false;
       if (res.error?.code === '42703') {
-        const { price_wholesale, wholesale_only, ...rest } = productData;
-        void price_wholesale; void wholesale_only;
+        const { price_wholesale, ...rest } = productData;
+        void price_wholesale;
         savingPayload = rest;
         sinColumnasMayoristas = true;
         res = editingProduct
-          ? await supabase.from('products').update(savingPayload).eq('id', editingProduct.id)
-          : await supabase.from('products').insert([savingPayload]);
+          ? await supabase.from('products').update(savingPayload).eq('id', editingProduct.id).select()
+          : await supabase.from('products').insert([savingPayload]).select();
       }
 
       if (res.error) throw res.error;
+
+      // Refresca la lista al instante, sin depender del realtime
+      const savedRow = res.data?.[0];
+      if (savedRow) {
+        setProducts(prev =>
+          editingProduct ? prev.map(p => (p.id === savedRow.id ? savedRow : p)) : [savedRow, ...prev]
+        );
+      }
 
       if (sinColumnasMayoristas) {
         logWarn('Guardado sin precio mayorista: faltan columnas en Supabase');
@@ -2186,17 +2196,14 @@ ${shippingData}
                       />
                     </div>
                   )}
-                  <label className="md:col-span-2 flex items-center gap-3 p-4 rounded-xl border border-border-main bg-bg-secondary cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newProduct.wholesale_only}
-                      onChange={e => setNewProduct({...newProduct, wholesale_only: e.target.checked})}
-                      className="w-5 h-5 accent-brand-pink"
-                    />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">
-                      Solo mayorista — no aparece en bellacatalogo.com
+                  <div className="md:col-span-2 flex items-center gap-3 p-4 rounded-xl border border-brand-pink/30 bg-brand-pink/5">
+                    <span className="w-2 h-2 rounded-full bg-brand-pink shrink-0" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-brand-pink">
+                      {adminCatalog === 'wholesale'
+                        ? 'Se guarda en el catálogo mayorista'
+                        : 'Se guarda en el catálogo normal'}
                     </span>
-                  </label>
+                  </div>
                   <div className="space-y-2">
                     <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Talles</label>
                     {(() => {
@@ -2313,7 +2320,7 @@ ${shippingData}
                 <h3 className="text-xl font-bold text-text-primary">Gestionar Catálogo Actual</h3>
                 <div className="grid grid-cols-1 gap-4">
                   {products
-                    .filter(product => adminCatalog === 'wholesale' ? true : !product.wholesale_only)
+                    .filter(product => catalogOf(product) === adminCatalog)
                     .map(product => (
                     <div key={product.id} className="bg-bg-primary p-4 rounded-xl border border-border-main flex items-center gap-4 shadow-sm hover:border-brand-pink/30 transition-colors">
                       <img src={getProductImage(product, product.colors?.[0])} alt="" loading="lazy" className="w-16 h-16 object-cover rounded-lg" referrerPolicy="no-referrer" />
@@ -2323,7 +2330,6 @@ ${shippingData}
                         </h4>
                         <p className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-widest font-black">
                           <span>{product.category} • {PROMOS.find(p => p.id === product.promo)?.label}</span>
-                          {product.wholesale_only && <span className="ml-2 text-brand-pink">• Solo mayorista</span>}
                         </p>
                         <p className="text-xs font-black text-text-primary mt-1">
                           {adminCatalog === 'wholesale'
