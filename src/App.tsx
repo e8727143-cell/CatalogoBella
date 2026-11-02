@@ -25,7 +25,8 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  Footprints
+  Footprints,
+  Star
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { 
@@ -1701,6 +1702,46 @@ ${shippingData}
               {/* Filters */}
               {!searchQuery && (
               <div className="space-y-2">
+                {selectedPromo && (
+                  <motion.button
+                    initial={{ opacity: 0, y: -10, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 320, damping: 26 }}
+                    onClick={() => setSelectedPromo(null)}
+                    aria-label="Quitar la promo seleccionada"
+                    className="relative w-full overflow-hidden rounded-2xl border border-[#8a6414]/30 px-4 py-4 sm:px-5 text-left shadow-[0_18px_40px_-18px_rgba(180,130,20,0.75)]"
+                    style={{ background: 'linear-gradient(100deg,#FFF6D0 0%,#F7D774 16%,#E8B93F 38%,#FBEBAB 55%,#D9A32C 76%,#F3D27C 100%)' }}
+                  >
+                    <motion.span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                      initial={{ x: '-140%' }}
+                      animate={{ x: '340%' }}
+                      transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 1.8, ease: 'easeInOut' }}
+                    />
+                    <span className="relative flex items-center gap-3 sm:gap-4">
+                      <span className="shrink-0 flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#3B2A05] text-[#F7D774] shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
+                        <Star size={20} className="fill-current" />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[9px] sm:text-[10px] font-black uppercase tracking-[0.35em] text-[#7A5A12]">
+                          Promo {PROMOS.find(p => p.id === selectedPromo)?.label}
+                        </span>
+                        <span className="block text-base sm:text-xl font-black uppercase tracking-tight text-[#2E2004] leading-tight">
+                          Elige tus modelos
+                        </span>
+                      </span>
+                      <span aria-hidden className="hidden sm:flex items-center gap-1 text-[#2E2004]/30 shrink-0">
+                        <Star size={11} className="fill-current" />
+                        <Star size={11} className="fill-current" />
+                        <Star size={11} className="fill-current" />
+                      </span>
+                      <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-[#2E2004]/10 text-[#2E2004]">
+                        <X size={14} />
+                      </span>
+                    </span>
+                  </motion.button>
+                )}
                 <div className="flex items-center gap-2">
                 <button
                   onClick={() => moverCategoria(-1)}
@@ -1748,17 +1789,6 @@ ${shippingData}
                   />
                 ))}
               </div>
-              {selectedPromo && (
-                <button
-                  onClick={() => setSelectedPromo(null)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-brand-pink/40 text-brand-pink hover:bg-brand-pink/5 transition-colors"
-                >
-                  <span className="text-xs font-black uppercase tracking-widest whitespace-nowrap">
-                    Promo: {PROMOS.find(p => p.id === selectedPromo)?.label}
-                  </span>
-                  <X size={14} />
-                </button>
-              )}
               </div>
               )}
 
