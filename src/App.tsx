@@ -37,13 +37,11 @@ import {
   SHIPPING_AGENCIES 
 } from './constants';
 import { supabase } from './lib/supabase';
-import { DevConsole } from './components/DevConsole';
+import { ConsoleButton, DevConsole } from './components/DevConsole';
 import { logInfo, logOk, logWarn } from './lib/logger';
 
 // /mayorista abre el mismo catálogo con la lista de precios mayorista
 const IS_WHOLESALE = /\/mayorista\/?$/i.test(window.location.pathname);
-// ?debug=1 muestra la consola de registro también fuera del panel
-const DEBUG = new URLSearchParams(window.location.search).has('debug');
 
 // --- Components ---
 
@@ -286,6 +284,7 @@ export default function App() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);  const [adminPassword, setAdminPassword] = useState('');
   const [adminCatalog, setAdminCatalog] = useState<'retail' | 'wholesale'>(IS_WHOLESALE ? 'wholesale' : 'retail');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [consoleOpen, setConsoleOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
@@ -1485,8 +1484,7 @@ ${shippingData}
               >
                 {isAdminPanel ? (
                   <span className="inline-flex items-baseline justify-center gap-2">
-                    <span>{STORE_NAME}</span>
-                    <span className="font-bold uppercase">Administradora</span>
+                    <span className="font-black uppercase tracking-tight text-base sm:text-2xl">Administra tus productos</span>
                   </span>
                 ) : (
                   <span className="inline-flex items-baseline gap-2">
@@ -1495,6 +1493,7 @@ ${shippingData}
                   </span>
                 )}
               </h1>
+              {isAdminPanel && <ConsoleButton open={consoleOpen} onToggle={() => setConsoleOpen(o => !o)} />}
             </div>
             
             <div className="flex items-center gap-8">
@@ -2432,7 +2431,7 @@ ${shippingData}
         }
       `}</style>
 
-      <DevConsole visible={isAdminPanel || DEBUG} />
+      <DevConsole open={consoleOpen && isAdminPanel} onClose={() => setConsoleOpen(false)} />
     </div>
     </ErrorBoundary>
   );
