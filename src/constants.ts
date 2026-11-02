@@ -9,7 +9,9 @@ export const PROMOS = [
     description: "Lleva 2 pares por solo $2990. (Un par solo: $1690)",
     price: 2990,
     individualPrice: 1690,
-    banner: "https://i.imgur.com/olI6lxq.jpeg"
+    banner: "https://i.imgur.com/olI6lxq.jpeg",
+    video: "/promo-loop.mp4",
+    poster: "/promo-loop.jpg"
   },
   {
     id: "importados",
@@ -19,6 +21,8 @@ export const PROMOS = [
     price: 0,
     individualPrice: 0,
     banner: "",
+    video: "",
+    poster: "",
     hideBanner: true
   },
   {
@@ -29,6 +33,8 @@ export const PROMOS = [
     price: 0,
     individualPrice: 0,
     banner: "",
+    video: "",
+    poster: "",
     hideBanner: true
   }
 ];

@@ -1579,7 +1579,7 @@ ${shippingData}
         <section className="mb-12">
           <div className="text-center mb-6">
             <p className="text-sm sm:text-lg font-black text-brand-pink uppercase tracking-tighter leading-tight">
-              Haz clic en la imagen y selecciona
+              Haz clic y selecciona
               <br />
               tu combo favorito.
             </p>
@@ -1606,12 +1606,27 @@ ${shippingData}
                     selectedPromo === promo.id ? "ring-4 ring-brand-pink ring-offset-4" : ""
                   )}
                 >
-                  <img 
-                    src={promo.banner} 
-                    alt={promo.title} 
-                    className="w-full h-auto block"
-                    referrerPolicy="no-referrer"
-                  />
+                  <div className="aspect-video bg-bg-secondary">
+                    {promo.video ? (
+                      <video
+                        src={promo.video}
+                        poster={promo.poster || promo.banner || undefined}
+                        className="w-full h-full object-cover pointer-events-none"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        preload="metadata"
+                      />
+                    ) : (
+                      <img 
+                        src={promo.banner} 
+                        alt={promo.title} 
+                        className="w-full h-full object-cover pointer-events-none"
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
+                  </div>
                   
                   {/* Selection Overlay */}
                   {selectedPromo === promo.id && (
