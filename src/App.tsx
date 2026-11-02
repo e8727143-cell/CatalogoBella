@@ -400,6 +400,21 @@ export default function App() {
     };
   }, []);
 
+  // El realtime no entrega cambios: mientras el panel está abierto, se revalida solo
+  useEffect(() => {
+    if (activeTab !== 'admin' || !isAdminAuthenticated) return;
+    const refrescar = async () => {
+      const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+      if (data) setProducts(data);
+    };
+    const timer = setInterval(refrescar, 20000);
+    window.addEventListener('focus', refrescar);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refrescar);
+    };
+  }, [activeTab, isAdminAuthenticated]);
+
   // La vista mayorista no se indexa: evita mezclar precios en Google
   useEffect(() => {
     if (!IS_WHOLESALE) return;
@@ -561,6 +576,7 @@ export default function App() {
   };
 
   const handleDeleteProduct = async (id: number) => {
+    const product = products.find(p => p.id === id);
     try {
       const { error } = await supabase
         .from('products')
@@ -572,10 +588,45 @@ export default function App() {
       setConfirmDelete(null);
       setNotification({ message: 'Producto eliminado correctamente', type: 'success' });
       logOk('Producto eliminado', { id });
+      if (product) void borrarFotosSueltas(product);
     } catch (error) {
       console.error('Error deleting product:', error);
       setNotification({ message: 'Error al eliminar el producto', type: 'error' });
     }
+  };
+
+  // Al borrar un producto, se borra de Cloudinary la foto que ya no usa ningún otro
+  const borrarFotosSueltas = async (product: any) => {
+    let fotos: string[] = [];
+    try {
+      fotos = (JSON.parse(product.image) as { url: string }[]).map(f => f.url);
+    } catch {
+      return; // fila sin fotos parseables
+    }
+
+    const enUso = new Set<string>();
+    products.filter(p => p.id !== product.id).forEach(p => {
+      try {
+        (JSON.parse(p.image) as { url: string }[]).forEach(f => enUso.add(f.url));
+      } catch {
+        // se ignora la fila rota
+      }
+    });
+
+    const ids = fotos
+      .filter(url => url.includes('res.cloudinary.com') && !enUso.has(url))
+      .map(url => url.match(/\/image\/upload\/v\d+\/(.+)$/)?.[1]?.replace(/\.[a-z0-9]+$/i, ''))
+      .filter((publicId): publicId is string => Boolean(publicId));
+
+    await Promise.allSettled(
+      ids.map(publicId =>
+        fetch('/api/delete-asset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ publicId })
+        })
+      )
+    );
   };
 
   // Crea una fila nueva en el catálogo mayorista; la del catálogo normal queda intacta
@@ -590,13 +641,20 @@ export default function App() {
         colors: product.colors,
         sizes: product.sizes,
         price_wholesale: '',
-        wholesale_only: true
+        wholesale_only: true,
+        origin_id: product.id
       };
 
-      const { data, error } = await supabase.from('products').insert([copia]).select();
-      if (error) throw error;
+      let res = await supabase.from('products').insert([copia]).select();
+      // Si la columna origin_id todavía no existe, se guarda sin ella
+      if (res.error?.code === '42703' || res.error?.code === 'PGRST204') {
+        const { origin_id, ...sinOrigen } = copia;
+        void origin_id;
+        res = await supabase.from('products').insert([sinOrigen]).select();
+      }
+      if (res.error) throw res.error;
 
-      const fila = data?.[0];
+      const fila = res.data?.[0];
       // El realtime puede traer la misma fila: se evita duplicarla en pantalla
       if (fila) setProducts(prev => (prev.some(p => p.id === fila.id) ? prev : [fila, ...prev]));
       setNotification({ message: 'Copiado al catálogo mayorista', type: 'success' });
@@ -607,10 +665,15 @@ export default function App() {
     }
   };
 
-  // Un producto del catálogo normal está "incluido" si existe una fila con su mismo nombre en el mayorista
+  // Un producto del catálogo normal está "incluido" si su copia existe en el mayorista.
+  // La copia guarda origin_id; las copias viejas se reconocen por nombre.
   const yaEnMayorista = (product: any) => {
     const nombre = String(product?.name || '').trim().toLowerCase();
-    return products.some(p => catalogOf(p) === 'wholesale' && String(p.name || '').trim().toLowerCase() === nombre);
+    return products.some(p => {
+      if (catalogOf(p) !== 'wholesale') return false;
+      if (p.origin_id) return p.origin_id === product.id;
+      return String(p.name || '').trim().toLowerCase() === nombre;
+    });
   };
 
   const [newProduct, setNewProduct] = useState({

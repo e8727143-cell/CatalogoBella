@@ -47,3 +47,12 @@ notify pgrst, 'reload schema';
 
 -- La app escucha cambios en vivo desde el panel.
 alter publication supabase_realtime add table public.products;
+
+-- Copia al catálogo mayorista: la fila nueva apunta a la fila original (evita comparar por nombre).
+alter table public.products add column if not exists origin_id bigint;
+
+-- Opcional: enlazar las copias que ya existen (mismo nombre que su original del catálogo normal).
+update public.products c
+  set origin_id = r.id
+  from public.products r
+ where c.wholesale_only and not r.wholesale_only and c.origin_id is null and c.name = r.name;
