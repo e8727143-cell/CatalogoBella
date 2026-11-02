@@ -2443,18 +2443,18 @@ ${IS_WHOLESALE ? '' : `\n💰 *Valor total a pagar:* $${totalValue}\n`}
                             : (product.price ? `$${product.price}` : 'Sin precio')}
                         </p>
                       </div>
-                      <div className="flex items-center gap-1 sm:gap-2">
-                        <button 
+                      <div className="w-full flex items-center gap-2 pt-2 border-t border-border-main/50">
+                        <button
                           onClick={() => handleEditClick(product)}
-                          className="p-3 text-text-secondary hover:text-brand-pink hover:bg-brand-pink/5 transition-all rounded-lg"
-                          title="Editar"
+                          className="flex-1 h-12 rounded-xl bg-brand-pink text-white text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
                         >
-                          <Pencil size={20} />
+                          Editar producto
                         </button>
-                        <button 
+                        <button
                           onClick={() => setConfirmDelete(product.id)}
-                          className="p-3 text-text-secondary hover:text-red-500 hover:bg-red-50 transition-all rounded-lg"
+                          className="w-12 h-12 shrink-0 rounded-xl bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
                           title="Eliminar"
+                          aria-label="Eliminar"
                         >
                           <Trash2 size={20} />
                         </button>
@@ -2462,7 +2462,7 @@ ${IS_WHOLESALE ? '' : `\n💰 *Valor total a pagar:* $${totalValue}\n`}
 
                       {/* Copiar al catálogo mayorista (solo en la pestaña BELLA) */}
                       {adminCatalog === 'retail' && (
-                        <div className="w-full pt-2 border-t border-border-main/50">
+                        <div className="w-full">
                           {yaEnMayorista(product) ? (
                             <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-600">
                               <CheckCircle2 size={14} />
@@ -2471,7 +2471,7 @@ ${IS_WHOLESALE ? '' : `\n💰 *Valor total a pagar:* $${totalValue}\n`}
                           ) : (
                             <button
                               onClick={() => copiarAMayorista(product)}
-                              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-pink hover:opacity-70 transition-opacity"
+                              className="w-full h-12 rounded-xl bg-brand-pink text-white text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                             >
                               <ArrowRight size={14} />
                               Mover al catálogo mayorista
