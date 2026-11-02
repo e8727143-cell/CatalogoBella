@@ -719,7 +719,7 @@ export default function App() {
     setSizeRange({ from: '36', to: '40' });
   };
 
-  const uploadToCloudinary = async (file: File) => {
+  const uploadToCloudinary = async (file: File, catalogo: 'retail' | 'wholesale' = 'retail') => {
     // Compresión en el navegador: 800 px máx, JPEG 0.7. Evita crashes en celulares con fotos grandes.
     const compressed = await new Promise<File>((resolve, reject) => {
       const reader = new FileReader();
@@ -749,15 +749,26 @@ export default function App() {
       reader.onerror = () => reject(new Error('Error al leer archivo'));
     });
 
-    const formData = new FormData();
-    formData.append('file', compressed);
-    formData.append('upload_preset', 'bella_catalogo');
+    const esMayorista = catalogo === 'wholesale';
+    const enviar = async (conCarpeta: boolean) => {
+      const formData = new FormData();
+      formData.append('file', compressed);
+      formData.append('upload_preset', esMayorista ? 'Bella-Catalogo-Mayorista' : 'bella_catalogo');
+      if (esMayorista && conCarpeta) formData.append('folder', 'Bella-Catalogo-Mayorista');
+      const response = await fetch('https://api.cloudinary.com/v1_1/nudnxkcm/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+      return { response, data: await response.json() };
+    };
 
-    const response = await fetch('https://api.cloudinary.com/v1_1/nudnxkcm/image/upload', {
-      method: 'POST',
-      body: formData
-    });
-    const data = await response.json();
+    let { response, data } = await enviar(true);
+    // Si el preset no permite elegir carpeta, se reintenta sin ella
+    if (!response.ok) {
+      const reintento = await enviar(false);
+      response = reintento.response;
+      data = reintento.data;
+    }
     if (!response.ok || !data.secure_url) {
       throw new Error(data?.error?.message || 'Cloudinary rechazó la imagen');
     }
@@ -778,7 +789,7 @@ export default function App() {
       setUploading(true);
       const urls: string[] = [];
       for (const file of files) {
-        urls.push(await uploadToCloudinary(file));
+        urls.push(await uploadToCloudinary(file, adminCatalog));
       }
       setNewProduct(prev => ({
         ...prev,
@@ -1526,12 +1537,12 @@ ${shippingData}
     <ErrorBoundary>
       <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-bg-primary/80 backdrop-blur-md border-b border-border-main">
+      <header className="sticky top-0 z-50 bg-brand-pink border-b border-border-main">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative flex items-center h-16">
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
               <h1 
-                className="text-2xl font-bold tracking-tighter text-brand-pink cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap"
+                className="text-2xl font-bold tracking-tighter text-text-primary cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap"
                 onClick={() => {
                   setAdminCatalog(IS_WHOLESALE ? 'wholesale' : 'retail');
                   if (isAdminAuthenticated) {
@@ -1563,7 +1574,7 @@ ${shippingData}
                   onClick={() => setActiveTab('catalog')}
                   className={cn(
                     "text-sm font-medium transition-colors",
-                    activeTab === 'catalog' ? "text-brand-pink" : "text-text-secondary hover:text-brand-pink"
+                    activeTab === 'catalog' ? "text-text-primary" : "text-text-primary/70 hover:text-text-primary"
                   )}
                 >
                   Catálogo
@@ -1572,7 +1583,7 @@ ${shippingData}
                   onClick={() => setActiveTab('order')}
                   className={cn(
                     "text-sm font-medium transition-colors",
-                    activeTab === 'order' ? "text-brand-pink" : "text-text-secondary hover:text-brand-pink"
+                    activeTab === 'order' ? "text-text-primary" : "text-text-primary/70 hover:text-text-primary"
                   )}
                 >
                   Cómo Comprar
