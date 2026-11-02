@@ -1645,6 +1645,29 @@ ${shippingData}
                     selectedPromo === promo.id ? "ring-4 ring-brand-pink ring-offset-4" : ""
                   )}
                 >
+                  {/* Etiqueta sobre el video, sin taparlo */}
+                  {selectedPromo !== promo.id && (
+                    <div className="flex items-center justify-between gap-2 bg-brand-pink px-3 py-2 text-white">
+                      <motion.span
+                        animate={{ y: [0, 4, 0] }}
+                        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        <ChevronDown size={16} />
+                      </motion.span>
+                      <span className="text-[10px] sm:text-xs font-black uppercase tracking-[0.12em] text-center leading-tight">
+                        Haz clic y selecciona
+                        <br />
+                        tu combo favorito
+                      </span>
+                      <motion.span
+                        animate={{ y: [0, 4, 0] }}
+                        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        <ChevronDown size={16} />
+                      </motion.span>
+                    </div>
+                  )}
+
                   <div className="aspect-video bg-bg-secondary">
                     {promo.video ? (
                       <video
@@ -1666,27 +1689,6 @@ ${shippingData}
                       />
                     )}
                   </div>
-
-                  {/* Etiqueta sobre el video */}
-                  {selectedPromo !== promo.id && (
-                    <span className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 bg-brand-pink px-3 py-2 text-white">
-                      <motion.span
-                        animate={{ y: [0, 4, 0] }}
-                        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        <ChevronDown size={16} />
-                      </motion.span>
-                      <span className="text-[9px] sm:text-xs font-black uppercase tracking-[0.12em] text-center leading-tight">
-                        Haz clic y selecciona tu combo favorito
-                      </span>
-                      <motion.span
-                        animate={{ y: [0, 4, 0] }}
-                        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        <ChevronDown size={16} />
-                      </motion.span>
-                    </span>
-                  )}
 
                   {/* Selection Overlay */}
                   {selectedPromo === promo.id && (
