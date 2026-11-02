@@ -445,6 +445,20 @@ export default function App() {
   };
 
   const categories = ['Todos', 'Femenino', 'Masculino', 'Infantil', 'Unisex', 'Deportivos', 'Chanclas'];
+  const catRowRef = useRef<HTMLDivElement>(null);
+
+  // Las flechas mueven la categoría activa y la barra se acompaña sola
+  const moverCategoria = (dir: number) => {
+    const i = categories.indexOf(selectedCategory);
+    setSelectedCategory(categories[(i + dir + categories.length) % categories.length]);
+  };
+
+  useEffect(() => {
+    const row = catRowRef.current;
+    const chip = row?.querySelector<HTMLElement>(`[data-cat="${selectedCategory}"]`);
+    if (!row || !chip) return;
+    row.scrollTo({ left: Math.max(0, chip.offsetLeft - row.clientWidth / 2 + chip.clientWidth / 2), behavior: 'smooth' });
+  }, [selectedCategory]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
@@ -1655,7 +1669,15 @@ ${shippingData}
             >
               {/* Filters */}
               {!searchQuery && (
-              <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => moverCategoria(-1)}
+                  aria-label="Categoría anterior"
+                  className="shrink-0 p-2 rounded-full border border-border-main bg-bg-primary text-text-secondary hover:text-brand-pink hover:border-brand-pink transition-colors shadow-sm"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <div ref={catRowRef} className="relative flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
                 {categories.map((cat) => {
                   const active = selectedCategory === cat;
                   const look = {
@@ -1699,9 +1721,10 @@ ${shippingData}
                   return (
                     <button
                       key={cat}
+                      data-cat={cat}
                       onClick={() => setSelectedCategory(cat)}
                       className={cn(
-                        "group relative w-full flex items-center justify-center px-4 py-2.5 rounded-xl border overflow-hidden text-center transition-all hover:shadow-md hover:-translate-y-px shadow-sm",
+                        "group relative shrink-0 flex items-center justify-center px-4 py-2.5 rounded-xl border overflow-hidden text-center transition-all hover:shadow-md hover:-translate-y-px shadow-sm",
                         look.bar
                       )}
                     >
@@ -1726,14 +1749,22 @@ ${shippingData}
                 {selectedPromo && (
                   <button
                     onClick={() => setSelectedPromo(null)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border-2 border-dashed border-brand-pink/40 text-brand-pink hover:bg-brand-pink/5 transition-colors"
+                    className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-brand-pink/40 text-brand-pink hover:bg-brand-pink/5 transition-colors"
                   >
-                    <span className="text-xs font-black uppercase tracking-widest">
+                    <span className="text-xs font-black uppercase tracking-widest whitespace-nowrap">
                       Promo: {PROMOS.find(p => p.id === selectedPromo)?.label}
                     </span>
                     <X size={14} />
                   </button>
                 )}
+                </div>
+                <button
+                  onClick={() => moverCategoria(1)}
+                  aria-label="Categoría siguiente"
+                  className="shrink-0 p-2 rounded-full border border-border-main bg-bg-primary text-text-secondary hover:text-brand-pink hover:border-brand-pink transition-colors shadow-sm"
+                >
+                  <ChevronRight size={18} />
+                </button>
               </div>
               )}
 
@@ -2453,6 +2484,13 @@ ${shippingData}
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: var(--color-brand-300);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
       `}</style>
 
