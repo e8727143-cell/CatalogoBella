@@ -1607,7 +1607,7 @@ ${shippingData}
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary group-focus-within:text-brand-pink transition-colors" size={20} />
             <input 
               type="text" 
-              placeholder="¿Qué calzado estás buscando hoy?"
+              placeholder="Busca tu calzado aquí..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
