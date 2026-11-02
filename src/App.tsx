@@ -386,7 +386,7 @@ export default function App() {
       .channel('products_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
         if (payload.eventType === 'INSERT') {
-          setProducts(prev => [payload.new, ...prev]);
+          setProducts(prev => (prev.some(p => p.id === payload.new.id) ? prev : [payload.new, ...prev]));
         } else if (payload.eventType === 'DELETE') {
           setProducts(prev => prev.filter(p => p.id !== payload.old.id));
         } else if (payload.eventType === 'UPDATE') {
@@ -568,6 +568,7 @@ export default function App() {
         .eq('id', id);
       
       if (error) throw error;
+      setProducts(prev => prev.filter(p => p.id !== id));
       setConfirmDelete(null);
       setNotification({ message: 'Producto eliminado correctamente', type: 'success' });
       logOk('Producto eliminado', { id });
@@ -577,28 +578,39 @@ export default function App() {
     }
   };
 
-  // Mueve la misma fila al otro catálogo (wholesale_only = catálogo mayorista)
-  const moverDeCatalogo = async (product: any, destino: 'retail' | 'wholesale') => {
+  // Crea una fila nueva en el catálogo mayorista; la del catálogo normal queda intacta
+  const copiarAMayorista = async (product: any) => {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .update({ wholesale_only: destino === 'wholesale' })
-        .eq('id', product.id)
-        .select();
+      const copia = {
+        name: product.name,
+        category: product.category,
+        promo: product.promo,
+        price: product.price,
+        image: product.image,
+        colors: product.colors,
+        sizes: product.sizes,
+        price_wholesale: '',
+        wholesale_only: true
+      };
 
+      const { data, error } = await supabase.from('products').insert([copia]).select();
       if (error) throw error;
 
       const fila = data?.[0];
-      if (fila) setProducts(prev => prev.map(p => (p.id === fila.id ? fila : p)));
-      setNotification({
-        message: destino === 'wholesale' ? 'Movido al catálogo mayorista' : 'Devuelto al catálogo BELLA',
-        type: 'success'
-      });
-      logOk('Producto movido de catálogo', { id: product.id, destino });
+      // El realtime puede traer la misma fila: se evita duplicarla en pantalla
+      if (fila) setProducts(prev => (prev.some(p => p.id === fila.id) ? prev : [fila, ...prev]));
+      setNotification({ message: 'Copiado al catálogo mayorista', type: 'success' });
+      logOk('Producto copiado al catálogo mayorista', { id: product.id, copia: fila?.id });
     } catch (error) {
-      console.error('Error moviendo producto:', error);
-      setNotification({ message: 'No se pudo mover el producto', type: 'error' });
+      console.error('Error copiando producto:', error);
+      setNotification({ message: 'No se pudo copiar el producto', type: 'error' });
     }
+  };
+
+  // Un producto del catálogo normal está "incluido" si existe una fila con su mismo nombre en el mayorista
+  const yaEnMayorista = (product: any) => {
+    const nombre = String(product?.name || '').trim().toLowerCase();
+    return products.some(p => catalogOf(p) === 'wholesale' && String(p.name || '').trim().toLowerCase() === nombre);
   };
 
   const [newProduct, setNewProduct] = useState({
@@ -2448,31 +2460,25 @@ ${IS_WHOLESALE ? '' : `\n💰 *Valor total a pagar:* $${totalValue}\n`}
                         </button>
                       </div>
 
-                      {/* Mover entre catálogos */}
-                      <div className="w-full pt-2 border-t border-border-main/50">
-                        {catalogOf(product) === 'wholesale' ? (
-                          <div className="flex flex-wrap items-center justify-between gap-2">
+                      {/* Copiar al catálogo mayorista (solo en la pestaña BELLA) */}
+                      {adminCatalog === 'retail' && (
+                        <div className="w-full pt-2 border-t border-border-main/50">
+                          {yaEnMayorista(product) ? (
                             <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-600">
                               <CheckCircle2 size={14} />
                               Incluido en el catálogo mayorista
                             </span>
+                          ) : (
                             <button
-                              onClick={() => moverDeCatalogo(product, 'retail')}
-                              className="text-[10px] font-black uppercase tracking-widest text-text-secondary underline hover:text-brand-pink transition-colors"
+                              onClick={() => copiarAMayorista(product)}
+                              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-pink hover:opacity-70 transition-opacity"
                             >
-                              Devolver al catálogo BELLA
+                              <ArrowRight size={14} />
+                              Mover al catálogo mayorista
                             </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => moverDeCatalogo(product, 'wholesale')}
-                            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-pink hover:opacity-70 transition-opacity"
-                          >
-                            <ArrowRight size={14} />
-                            Mover al catálogo mayorista
-                          </button>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
